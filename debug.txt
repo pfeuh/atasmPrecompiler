@@ -1,0 +1,190 @@
+monitor.asm#1                            
+monitor.asm#2                                ;---------------------------------;
+monitor.asm#3                                ; a 4ko ROM monitor for vosc6502  ;
+monitor.asm#4                                ;---------------------------------;
+monitor.asm#5                            
+monitor.asm#6                                * = $c000
+monitor.asm#7                            
+monitor.asm#8                            main
+monitor.asm#9                                jmp start
+monitor.asm#10                           ;     .include monitor_stuff.asm
+monitor_stuff.asm#1                      
+monitor_stuff.asm#2                      
+monitor_stuff.asm#3                      ;     .include monitor_equates.asm
+monitor_equates.asm#1                    
+monitor_equates.asm#2                        ; special characters
+monitor_equates.asm#3                        CHAR_RETURN = $0a
+monitor_equates.asm#4                    
+monitor_equates.asm#5                        ;hardware registers
+monitor_equates.asm#6                        PUTSCR_REG = $bf00
+monitor_equates.asm#7                    
+monitor_equates.asm#8                    ;     bss float flt1
+---*** precompiler ***---#1                  flt1 = 0
+monitor_equates.asm#9                    ;     bss float flt2
+---*** precompiler ***---#2                  flt2 = 6
+monitor_equates.asm#10                   ;     bss float flt3
+---*** precompiler ***---#3                  flt3 = 12
+monitor_equates.asm#11                   ;     bss float flt4
+---*** precompiler ***---#4                  flt4 = 18
+monitor_equates.asm#12                   
+monitor_equates.asm#13                   
+monitor_equates.asm#14                   ;     code byte phar
+---*** precompiler ***---#5                  phar = 0
+monitor_equates.asm#15                   ;     code byte tami
+---*** precompiler ***---#6                  tami = 1
+monitor_stuff.asm#4                      
+monitor_stuff.asm#5                      ;     data long mekk
+---*** precompiler ***---#7                  mekk = 0
+monitor_stuff.asm#6                      ;     data long ouyes
+---*** precompiler ***---#8                  ouyes = 4
+monitor_stuff.asm#7                      
+monitor_stuff.asm#8                      ;     ZP word op1
+---*** precompiler ***---#9                  op1 = 38
+monitor_stuff.asm#9                      ;     ZP word op2
+---*** precompiler ***---#10                 op2 = 40
+monitor_stuff.asm#10                     ;     ZP word op3
+---*** precompiler ***---#11                 op3 = 42
+monitor_stuff.asm#12                     
+monitor_stuff.asm#13                     ;     ZP byte titi
+---*** precompiler ***---#12                 titi = 44
+monitor_stuff.asm#14                     ;     ZP byte TATA
+---*** precompiler ***---#13                 tata = 45
+monitor_stuff.asm#15                     ;     ZP WORD wiwi
+---*** precompiler ***---#14                 wiwi = 46
+monitor_stuff.asm#16                     
+monitor_stuff.asm#17                     ;     rodata word hello1
+---*** precompiler ***---#15             hello1 * = * + 0
+monitor_stuff.asm#18                     ;     rodata word hello2
+---*** precompiler ***---#16             hello2 * = * + 2
+monitor_stuff.asm#19                     ;     rodata word hello3
+---*** precompiler ***---#17             hello3 * = * + 4
+monitor.asm#11                           
+monitor.asm#12                           
+monitor.asm#13                           start
+monitor.asm#14                               ; print "vosc6502...
+monitor.asm#15                               ldx #<splash1
+monitor.asm#16                               ldy #>splash1
+monitor.asm#17                               jsr println
+monitor.asm#18                           
+monitor.asm#19                               ; print "version ...
+monitor.asm#20                               ldx #<splash2
+monitor.asm#21                               ldy #>splash2
+monitor.asm#22                               jsr println
+monitor.asm#23                           
+monitor.asm#24                               ; print "start point is
+monitor.asm#25                               ldx #<main
+monitor.asm#26                               ldy #>main
+monitor.asm#27                               jsr print
+monitor.asm#28                           
+monitor.asm#29                               ; print "start point value
+monitor.asm#30                               ldx #<start_mes
+monitor.asm#31                               lda #>start_mes
+monitor.asm#32                               jsr print16
+monitor.asm#33                           
+monitor.asm#34                               ; print "stop point is
+monitor.asm#35                               ldx #<stop
+monitor.asm#36                               ldy #>stop
+monitor.asm#37                               jsr print
+monitor.asm#38                           
+monitor.asm#39                               ; print "start point value
+monitor.asm#40                               ldx #<stop_mes
+monitor.asm#41                               lda #>stop_mes
+monitor.asm#42                               jsr print16
+monitor.asm#43                           
+monitor.asm#44                           stop
+monitor.asm#45                               brk
+monitor.asm#46                           
+monitor.asm#47                           println
+monitor.asm#48                               jsr print
+monitor.asm#49                               lda #CHAR_RETURN
+monitor.asm#50                               sta PUTSCR_REG
+monitor.asm#51                               rts
+monitor.asm#52                           
+monitor.asm#53                           print
+monitor.asm#54                               op1 = 0
+monitor.asm#55                               stx op1
+monitor.asm#56                               sty op1+1
+monitor.asm#57                               ldy #0
+monitor.asm#58                           
+monitor.asm#59                           print_l1
+monitor.asm#60                               lda (op1),y
+monitor.asm#61                               cmp #0
+monitor.asm#62                               beq print_out
+monitor.asm#63                               sta PUTSCR_REG
+monitor.asm#64                               iny
+monitor.asm#65                               bne print_l1
+monitor.asm#66                           
+monitor.asm#67                           print_out
+monitor.asm#68                               rts
+monitor.asm#69                           
+monitor.asm#70                           print4
+monitor.asm#71                               and #$0f
+monitor.asm#72                               tax
+monitor.asm#73                               lda hextab, x
+monitor.asm#74                               sta PUTSCR_REG
+monitor.asm#75                               rts
+monitor.asm#76                           
+monitor.asm#77                           print8
+monitor.asm#78                               pha
+monitor.asm#79                               lsr
+monitor.asm#80                               lsr
+monitor.asm#81                               lsr
+monitor.asm#82                               lsr
+monitor.asm#83                               jsr print4
+monitor.asm#84                               pla
+monitor.asm#85                               jmp print4
+monitor.asm#86                           
+monitor.asm#87                           print16
+monitor.asm#88                               pha
+monitor.asm#89                               tax
+monitor.asm#90                               jsr print8
+monitor.asm#91                               pla
+monitor.asm#92                               jmp print8
+monitor.asm#93                           
+monitor.asm#94                           irq_in
+monitor.asm#95                               pla
+monitor.asm#96                               pla
+monitor.asm#97                               pla
+monitor.asm#98                               brk
+monitor.asm#99                           
+monitor.asm#100                          nmi_in
+monitor.asm#101                              pla
+monitor.asm#102                              pla
+monitor.asm#103                              pla
+monitor.asm#104                              brk
+monitor.asm#105                          
+monitor.asm#106                          source_end
+monitor.asm#107                          
+monitor.asm#108                          splash1
+monitor.asm#109                              .byte "VOSC6502 (Virtual Old School Computer with a 6502 processor)", 0
+monitor.asm#110                          
+monitor.asm#111                          splash2
+monitor.asm#112                              .byte "version 0.99 -------------------------- MMXX - Pierre Faller", 0
+monitor.asm#113                          
+monitor.asm#114                          start_mes
+monitor.asm#115                              .byte "start point is ", 0
+monitor.asm#116                          
+monitor.asm#117                          stop_mes
+monitor.asm#118                              .byte "stop point is ", 0
+monitor.asm#119                          
+monitor.asm#120                          hextab
+monitor.asm#121                              .byte "0123456789ABCDEF", 0
+monitor.asm#122                          
+monitor.asm#123                          ;     rodata float dummy_rodata1
+---*** precompiler ***---#18             dummy_rodata1 * = * + 6
+monitor.asm#124                          dummy_rodata2
+monitor.asm#125                              .byte "azerty", 0
+monitor.asm#126                          
+monitor.asm#127                          
+monitor.asm#128                          
+monitor.asm#129                          
+monitor.asm#130                          
+monitor.asm#131                              * = $fffa ; nmi vector
+monitor.asm#132                              .word nmi_in
+monitor.asm#133                          
+monitor.asm#134                              * = $fffc ; run vector
+monitor.asm#135                              .word main
+monitor.asm#136                          
+monitor.asm#137                              * = $fffe ; irq vector
+monitor.asm#138                              .word irq_in
+monitor.asm#139                          

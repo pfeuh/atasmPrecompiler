@@ -3,11 +3,14 @@
     ; a 4ko ROM monitor for vosc6502  ;
     ;---------------------------------;
 
-    .include monitor_stuff.asm
-
     * = $c000
     
 main
+    jmp start
+    .include monitor_stuff.asm
+
+
+start
     ; print "vosc6502...
     ldx #<splash1
     ldy #>splash1
@@ -100,6 +103,8 @@ nmi_in
     pla
     brk
 
+source_end
+
 splash1
     .byte "VOSC6502 (Virtual Old School Computer with a 6502 processor)", 0
     
@@ -114,6 +119,14 @@ stop_mes
 
 hextab
     .byte "0123456789ABCDEF", 0
+
+    rodata float dummy_rodata1
+dummy_rodata2
+    .byte "azerty", 0
+    
+    
+
+
 
     * = $fffa ; nmi vector
     .word nmi_in

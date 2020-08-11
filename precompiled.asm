@@ -3,38 +3,64 @@
     ; a 4ko ROM monitor for vosc6502  ;
     ;---------------------------------;
 
+    * = $c000
+
+main
+    jmp start
 ;     .include monitor_stuff.asm
 
 
 ;     .include monitor_equates.asm
 
-    ; spaciel characters
+    ; special characters
     CHAR_RETURN = $0a
 
     ;hardware registers
     PUTSCR_REG = $bf00
 
+;     bss float flt1
+    flt1 = 0
+;     bss float flt2
+    flt2 = 6
+;     bss float flt3
+    flt3 = 12
+;     bss float flt4
+    flt4 = 18
 
 
+;     code byte phar
+    phar = 0
+;     code byte tami
+    tami = 1
+
+;     data long mekk
+    mekk = 0
+;     data long ouyes
+    ouyes = 4
 
 ;     ZP word op1
-    op1 = 0
+    op1 = 38
 ;     ZP word op2
-    op2 = 2
+    op2 = 40
 ;     ZP word op3
-    op3 = 4
+    op3 = 42
 
 ;     ZP byte titi
-    titi = 6
+    titi = 44
 ;     ZP byte TATA
-    tata = 7
+    tata = 45
 ;     ZP WORD wiwi
-    wiwi = 8
+    wiwi = 46
+
+;     rodata word hello1
+hello1 * = * + 0
+;     rodata word hello2
+hello2 * = * + 2
+;     rodata word hello3
+hello3 * = * + 4
 
 
-    * = $c000
-
-main
+start
     ; print "vosc6502...
     ldx #<splash1
     ldy #>splash1
@@ -127,6 +153,8 @@ nmi_in
     pla
     brk
 
+source_end
+
 splash1
     .byte "VOSC6502 (Virtual Old School Computer with a 6502 processor)", 0
 
@@ -141,6 +169,15 @@ stop_mes
 
 hextab
     .byte "0123456789ABCDEF", 0
+
+;     rodata float dummy_rodata1
+dummy_rodata1 * = * + 6
+dummy_rodata2
+    .byte "azerty", 0
+
+
+
+
 
     * = $fffa ; nmi vector
     .word nmi_in

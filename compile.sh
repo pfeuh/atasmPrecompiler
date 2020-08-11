@@ -2,7 +2,7 @@
 echo $SHELL $0 "launched by" $USER $(date)
 cd ./
 
-./precompile.py -ifname monitor.asm -ofname precompiled.asm
+./precompile.py -ifname monitor.asm -ofname precompiled.asm -rom -ram_start 200 -code_start f000 -trace debug.txt
 
 errnum=$?
 if test $errnum -eq 0;then
@@ -11,7 +11,7 @@ else
 echo PRECOMPILATION FAILED error $errnum
 exit 1
 fi
-../../../../PROGS/atasm106.exe  -r-v -llabels.txt precompiled.asm -omonitor.o
+atasm  -r-v -llabels.txt precompiled.asm -omonitor.o
 
 errnum=$?
 if test $errnum -eq 0;then

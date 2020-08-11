@@ -1,0 +1,26 @@
+# SciTE session file
+
+buffer.1.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/compile.sh
+buffer.1.position=1
+buffer.1.scroll=0
+
+buffer.2.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/precompile.py
+buffer.2.position=10017
+buffer.2.scroll=168
+buffer.2.current=1
+
+buffer.3.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/monitor.asm
+buffer.3.position=1
+buffer.3.scroll=0
+
+buffer.4.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/monitor_equates.asm
+buffer.4.position=1
+buffer.4.scroll=0
+
+buffer.5.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/monitor_stuff.asm
+buffer.5.position=1
+buffer.5.scroll=0
+
+buffer.6.path=/media/pfeuh/70b90f4a-e5a6-4a83-bf19-1feffc44cab0/Documents/sources/python/atasmPrecompiler/precompiled.asm
+buffer.6.position=157
+buffer.6.scroll=0
