@@ -92,7 +92,7 @@ print_word
     pla
     jmp print_byte
 
-irq
+irqz
     pla
     pla
     pla
@@ -120,12 +120,13 @@ stop_mes
 
 hextab .ch_array "0123456789ABCDEF"
 
-    * = $fffa ; nmi vector
-    .word nmi
-    
-    * = $fffc ; run vector
-    .word main
-    
-    * = $fffe ; irq vector
-    .word irq
+test6 .ch_array "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
+    ; * = $fffa ; nmi vector
+    ; .word nmi
+    
+    ; * = $fffc ; run vector
+    ; .word main
+    
+    ; * = $fffe ; irq vector
+    ; .word irq
