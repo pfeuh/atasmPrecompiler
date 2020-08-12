@@ -3,12 +3,13 @@
     ; a 4ko ROM monitor for vosc6502  ;
     ;---------------------------------;
 
-    * = $c000
+    .include monitor_equates.asm
+
+    * = $f000
     
 main
     jmp start
     .include monitor_stuff.asm
-
 
 start
     ; print "vosc6502...
@@ -29,7 +30,7 @@ start
     ; print "start point value
     ldx #<start_mes
     lda #>start_mes
-    jsr print16
+    jsr print_word
 
     ; print "stop point is
     ldx #<stop
@@ -39,7 +40,7 @@ start
     ; print "start point value
     ldx #<stop_mes
     lda #>stop_mes
-    jsr print16
+    jsr print_word
 
 stop
     brk
@@ -67,37 +68,37 @@ print_l1
 print_out
     rts
 
-print4
+print_nibble
     and #$0f
     tax
     lda hextab, x
     sta PUTSCR_REG
     rts
 
-print8
+print_byte
     pha
     lsr
     lsr
     lsr
     lsr
-    jsr print4
+    jsr print_nibble
     pla
-    jmp print4
+    jmp print_nibble
 
-print16
+print_word
     pha
     tax
-    jsr print8
+    jsr print_byte
     pla
-    jmp print8
+    jmp print_byte
 
-irq_in
+irq
     pla
     pla
     pla
     brk
 
-nmi_in
+nmi
     pla
     pla
     pla
@@ -105,35 +106,26 @@ nmi_in
 
 source_end
 
-splash1
-    .byte "VOSC6502 (Virtual Old School Computer with a 6502 processor)", 0
+splash1 .string              "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
     
 splash2
-    .byte "version 0.99 -------------------------- MMXX - Pierre Faller", 0
+    .string            "version 0.99 -------------------------- MMXX - Pierre Faller\n"
 
 start_mes
-    .byte "start point is ", 0
+    .string "start point is "
 
 stop_mes
-    .byte "stop point is ", 0
+    .string "stop point is "
+    .string "searching the small beast..." " and don't find it" + chr(255)
 
-hextab
-    .byte "0123456789ABCDEF", 0
-
-    rodata float dummy_rodata1
-dummy_rodata2
-    .byte "azerty", 0
-    
-    
-
-
+hextab .ch_array "0123456789ABCDEF"
 
     * = $fffa ; nmi vector
-    .word nmi_in
+    .word nmi
     
     * = $fffc ; run vector
     .word main
     
     * = $fffe ; irq vector
-    .word irq_in
+    .word irq
 

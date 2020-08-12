@@ -2,18 +2,10 @@
 
     .include monitor_equates.asm
 
-    data long mekk
-    data long ouyes
+test1 .string "petite\n"
+test2 .string "moyenne\n"
+test3 .string "un peu plus\n"
+test4 .string "un peu plus grande\n"
+test5 .string "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+test5 .ch_array "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 
-    ZP word op1
-    ZP word op2
-    ZP word op3
-    .include monitor_stuff.asm
-    
-    ZP byte titi
-    ZP byte TATA
-    ZP WORD wiwi
-
-    rodata word hello1
-    rodata word hello2
-    rodata word hello3

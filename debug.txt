@@ -18,46 +18,7 @@ monitor_equates.asm#4
 monitor_equates.asm#5                        ;hardware registers
 monitor_equates.asm#6                        PUTSCR_REG = $bf00
 monitor_equates.asm#7                    
-monitor_equates.asm#8                    ;     bss float flt1
----*** precompiler ***---#1                  flt1 = 0
-monitor_equates.asm#9                    ;     bss float flt2
----*** precompiler ***---#2                  flt2 = 6
-monitor_equates.asm#10                   ;     bss float flt3
----*** precompiler ***---#3                  flt3 = 12
-monitor_equates.asm#11                   ;     bss float flt4
----*** precompiler ***---#4                  flt4 = 18
-monitor_equates.asm#12                   
-monitor_equates.asm#13                   
-monitor_equates.asm#14                   ;     code byte phar
----*** precompiler ***---#5                  phar = 0
-monitor_equates.asm#15                   ;     code byte tami
----*** precompiler ***---#6                  tami = 1
 monitor_stuff.asm#4                      
-monitor_stuff.asm#5                      ;     data long mekk
----*** precompiler ***---#7                  mekk = 0
-monitor_stuff.asm#6                      ;     data long ouyes
----*** precompiler ***---#8                  ouyes = 4
-monitor_stuff.asm#7                      
-monitor_stuff.asm#8                      ;     ZP word op1
----*** precompiler ***---#9                  op1 = 38
-monitor_stuff.asm#9                      ;     ZP word op2
----*** precompiler ***---#10                 op2 = 40
-monitor_stuff.asm#10                     ;     ZP word op3
----*** precompiler ***---#11                 op3 = 42
-monitor_stuff.asm#12                     
-monitor_stuff.asm#13                     ;     ZP byte titi
----*** precompiler ***---#12                 titi = 44
-monitor_stuff.asm#14                     ;     ZP byte TATA
----*** precompiler ***---#13                 tata = 45
-monitor_stuff.asm#15                     ;     ZP WORD wiwi
----*** precompiler ***---#14                 wiwi = 46
-monitor_stuff.asm#16                     
-monitor_stuff.asm#17                     ;     rodata word hello1
----*** precompiler ***---#15             hello1 * = * + 0
-monitor_stuff.asm#18                     ;     rodata word hello2
----*** precompiler ***---#16             hello2 * = * + 2
-monitor_stuff.asm#19                     ;     rodata word hello3
----*** precompiler ***---#17             hello3 * = * + 4
 monitor.asm#11                           
 monitor.asm#12                           
 monitor.asm#13                           start
@@ -117,37 +78,37 @@ monitor.asm#66
 monitor.asm#67                           print_out
 monitor.asm#68                               rts
 monitor.asm#69                           
-monitor.asm#70                           print4
+monitor.asm#70                           print_nibble
 monitor.asm#71                               and #$0f
 monitor.asm#72                               tax
 monitor.asm#73                               lda hextab, x
 monitor.asm#74                               sta PUTSCR_REG
 monitor.asm#75                               rts
 monitor.asm#76                           
-monitor.asm#77                           print8
+monitor.asm#77                           print_byte
 monitor.asm#78                               pha
 monitor.asm#79                               lsr
 monitor.asm#80                               lsr
 monitor.asm#81                               lsr
 monitor.asm#82                               lsr
-monitor.asm#83                               jsr print4
+monitor.asm#83                               jsr print_nibble
 monitor.asm#84                               pla
-monitor.asm#85                               jmp print4
+monitor.asm#85                               jmp print_nibble
 monitor.asm#86                           
-monitor.asm#87                           print16
+monitor.asm#87                           print_word
 monitor.asm#88                               pha
 monitor.asm#89                               tax
-monitor.asm#90                               jsr print8
+monitor.asm#90                               jsr print_byte
 monitor.asm#91                               pla
-monitor.asm#92                               jmp print8
+monitor.asm#92                               jmp print_byte
 monitor.asm#93                           
-monitor.asm#94                           irq_in
+monitor.asm#94                           irq
 monitor.asm#95                               pla
 monitor.asm#96                               pla
 monitor.asm#97                               pla
 monitor.asm#98                               brk
 monitor.asm#99                           
-monitor.asm#100                          nmi_in
+monitor.asm#100                          nmi
 monitor.asm#101                              pla
 monitor.asm#102                              pla
 monitor.asm#103                              pla
@@ -156,35 +117,25 @@ monitor.asm#105
 monitor.asm#106                          source_end
 monitor.asm#107                          
 monitor.asm#108                          splash1
-monitor.asm#109                              .byte "VOSC6502 (Virtual Old School Computer with a 6502 processor)", 0
+monitor.asm#109                          ;     .string "VOSC6502 (Virtual Old School Computer with a 6502 processor)\n"
 monitor.asm#110                          
 monitor.asm#111                          splash2
-monitor.asm#112                              .byte "version 0.99 -------------------------- MMXX - Pierre Faller", 0
+monitor.asm#112                          ;     .string "version 0.99 -------------------------- MMXX - Pierre Faller\n"
 monitor.asm#113                          
 monitor.asm#114                          start_mes
-monitor.asm#115                              .byte "start point is ", 0
+monitor.asm#115                          ;     .string "start point is "
 monitor.asm#116                          
 monitor.asm#117                          stop_mes
-monitor.asm#118                              .byte "stop point is ", 0
+monitor.asm#118                          ;     .string "stop point is "
 monitor.asm#119                          
-monitor.asm#120                          hextab
-monitor.asm#121                              .byte "0123456789ABCDEF", 0
-monitor.asm#122                          
-monitor.asm#123                          ;     rodata float dummy_rodata1
----*** precompiler ***---#18             dummy_rodata1 * = * + 6
-monitor.asm#124                          dummy_rodata2
-monitor.asm#125                              .byte "azerty", 0
-monitor.asm#126                          
+monitor.asm#120                          hextab ; .StRNeOs ; "0123456789ABCDEF"
+monitor.asm#121                          
+monitor.asm#122                              * = $fffa ; nmi vector
+monitor.asm#123                              .word nmi
+monitor.asm#124                          
+monitor.asm#125                              * = $fffc ; run vector
+monitor.asm#126                              .word main
 monitor.asm#127                          
-monitor.asm#128                          
-monitor.asm#129                          
+monitor.asm#128                              * = $fffe ; irq vector
+monitor.asm#129                              .word irq
 monitor.asm#130                          
-monitor.asm#131                              * = $fffa ; nmi vector
-monitor.asm#132                              .word nmi_in
-monitor.asm#133                          
-monitor.asm#134                              * = $fffc ; run vector
-monitor.asm#135                              .word main
-monitor.asm#136                          
-monitor.asm#137                              * = $fffe ; irq vector
-monitor.asm#138                              .word irq_in
-monitor.asm#139                          
