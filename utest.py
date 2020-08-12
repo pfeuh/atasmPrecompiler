@@ -143,7 +143,11 @@ if __name__ == "__main__":
     text = "     toto titi tata ; comment"
     assert commentLine(text) == ";     toto titi tata ; comment"
 
-
+    text = 'test5 .string "\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+    writeln(text)
+    writeln(commentLine(text))
+    
+    #~ assert commentLine(text) == ";     toto titi tata ; comment"
 
 
     

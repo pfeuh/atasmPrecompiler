@@ -21,16 +21,16 @@ monitor.asm#12                           ;    .include monitor_stuff.asm
 monitor_stuff.asm#1                      
 monitor_stuff.asm#2                      
 monitor_stuff.asm#4                      
-monitor_stuff.asm#5                      test1.string"petite\n"
+monitor_stuff.asm#5                      test1 ; .string "petite\n"
 <precompiler>#2                              .byte $70, $65, $74, $69, $74, $65, $0a, $00
-monitor_stuff.asm#6                      test2.string"moyenne\n"
+monitor_stuff.asm#6                      test2 ; .string "moyenne\n"
 <precompiler>#3                              .byte $6d, $6f, $79, $65, $6e, $6e, $65, $0a, $00
-monitor_stuff.asm#7                      test3.string"unpeuplus\n"
+monitor_stuff.asm#7                      test3 ; .string "un peu plus\n"
 <precompiler>#4                              .byte $75, $6e, $20, $70, $65, $75, $20, $70, $6c, $75, $73, $0a, $00
-monitor_stuff.asm#8                      test4.string"unpeuplusgrande\n"
+monitor_stuff.asm#8                      test4 ; .string "un peu plus grande\n"
 <precompiler>#5                              .byte $75, $6e, $20, $70, $65, $75, $20, $70, $6c, $75, $73, $20, $67
 <precompiler>#6                              .byte $72, $61, $6e, $64, $65, $0a, $00
-monitor_stuff.asm#9                      test5.string"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+monitor_stuff.asm#9                      test5 ; .string "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 <precompiler>#7                              .byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $0a, $0b, $0c
 <precompiler>#8                              .byte $0d, $0e, $0f, $00
 monitor_stuff.asm#10                     
@@ -41,12 +41,12 @@ monitor.asm#15                               ; print "vosc6502...
 monitor.asm#16                               ldx #<splash1
 monitor.asm#17                               ldy #>splash1
 monitor.asm#18                               jsr println
-monitor.asm#19                           
+monitor.asm#19                           dummylabel1
 monitor.asm#20                               ; print "version ...
 monitor.asm#21                               ldx #<splash2
 monitor.asm#22                               ldy #>splash2
 monitor.asm#23                               jsr println
-monitor.asm#24                           
+monitor.asm#24                           dummylabel2
 monitor.asm#25                               ; print "start point is
 monitor.asm#26                               ldx #<main
 monitor.asm#27                               ldy #>main
@@ -131,7 +131,7 @@ monitor.asm#105                              brk
 monitor.asm#106                          
 monitor.asm#107                          source_end
 monitor.asm#108                          
-monitor.asm#109                          splash1.string"\"VOSC6502\"(VirtualOldSchoolComputerwitha6502processor)\n"
+monitor.asm#109                          splash1 ; .string              "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
 <precompiler>#10                             .byte $22, $56, $4f, $53, $43, $36, $35, $30, $32, $22, $20, $28, $56
 <precompiler>#11                             .byte $69, $72, $74, $75, $61, $6c, $20, $4f, $6c, $64, $20, $53, $63
 <precompiler>#12                             .byte $68, $6f, $6f, $6c, $20, $43, $6f, $6d, $70, $75, $74, $65, $72
@@ -161,11 +161,11 @@ monitor.asm#119                          ;    .string "searching the small beast
 <precompiler>#26                             .byte $2e, $2e, $20, $61, $6e, $64, $20, $64, $6f, $6e, $27, $74, $20
 <precompiler>#27                             .byte $66, $69, $6e, $64, $20, $69, $74, $ff, $00
 monitor.asm#120                          
-monitor.asm#121                          hextab.ch_array"0123456789ABCDEF"
+monitor.asm#121                          hextab ; .ch_array "0123456789ABCDEF"
 <precompiler>#28                             .byte $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $41, $42, $43
 <precompiler>#29                             .byte $44, $45, $46
 monitor.asm#122                          
-monitor.asm#123                          test6.ch_array"\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
+monitor.asm#123                          test6 ; .ch_array "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
 <precompiler>#30                             .byte $00, $01, $02, $03, $04, $05, $06, $07, $08, $09, $0a, $0b, $0c
 <precompiler>#31                             .byte $0d, $0e, $0f
 monitor.asm#124                          

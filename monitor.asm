@@ -16,12 +16,12 @@ start
     ldx #<splash1
     ldy #>splash1
     jsr println
-    
+dummylabel1
     ; print "version ...
     ldx #<splash2
     ldy #>splash2
     jsr println
-    
+dummylabel2    
     ; print "start point is
     ldx #<main
     ldy #>main
