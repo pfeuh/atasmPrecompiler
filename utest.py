@@ -3,7 +3,7 @@
 
 import sys
 import os
-import preATasm as pco
+import precompile as pco
 
 write = pco.write
 writeln = pco.writeln
@@ -69,8 +69,18 @@ if __name__ == "__main__":
     assert removeComment(" ; ;toto ; azerty") == ""
     assert removeComment(" ; toto ; azerty") == ""
     assert removeComment('toto .string "azerty";"azerty"') == 'toto .string "azerty"'
-    assert removeComment('toto .string "aze;rty";"azerty"') == 'toto .string "aze;rty"'
-    # TODO: a test with '/"'  or ';' in a string... don't know how to do now
+    text = 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+    assert removeComment(text) == 'test5'
+    text = 'toto .string "aze;rty"   "qwerty" ;   "uiop"'
+    assert removeComment(text) == 'toto .string "aze;rty"   "qwerty"'
+    # testing string not closed
+    text = 'toto .string "aze;rty"   "qwerty ;   uiop'
+    try:
+        assert removeComment(text) == 'toto .string "aze;rty"   "qwerty"'
+    except:
+        pass
+    else:
+        raise Exception("there should have been an exception.")
 
     line = LINE("noname", "", 123)    
 
@@ -143,12 +153,7 @@ if __name__ == "__main__":
     text = "     toto titi tata ; comment"
     assert commentLine(text) == ";     toto titi tata ; comment"
 
-    text = 'test5 .string "\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
-    writeln(text)
-    writeln(commentLine(text))
-    
-    #~ assert commentLine(text) == ";     toto titi tata ; comment"
-
-
+    text = 'test5 .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+    assert commentLine(text) == 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
     
     writeln("A L L   T E S T S   P A S S E D !")

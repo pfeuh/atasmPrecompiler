@@ -7,16 +7,17 @@ import sys
 import os
 
 # arguments
-VERBOSE = False
-DEBUG = False
-WARN_ALL = False
+VERBOSE = False  # blablabla...
+DEBUG = False    # useful for programer only
+WARN_ALL = False # set all warnings
 WARN_EQU = False # include already done
 WARN_STR = False # \x00 in a string
 WARN_LAB = False # a label is missing
-IFNAME = None
-OFNAME = None
+IFNAME = None    # input file to assemble
+OFNAME = None    # output file name (all files merged)
 DFNAME = None    # debug (verbose listing) filename
-NB_COLS = 16
+LFNAME = None    # labels list filename
+NB_COLS = 16     # number of columns of the bytes generator
 
 VERSION = "0.99"
 COMMENT_TAG = ";"
@@ -24,6 +25,7 @@ EMPTY_STR = ""
 KEYWORD_INCLUDE = ".include"
 CHAR_SPACE =' '
 CHAR_EOL = chr(0)
+CHAR_SINGLE_QUOTE = "'"
 CHAR_QUOTE = '"'
 CHAR_ANTISLASH = "\\"
 CHAR_UNDERSCORE = "_"
@@ -85,43 +87,34 @@ def labelIsOk(label):
             return False
     return True
 
-def XX__removeComment(text):
+def removeComment(text, line=None):
     otext = EMPTY_STR
-    if text.startswith(CHAR_SPACE):
-        # no labelo, no problemo!
-        return "%s %s"%(COMMENT_TAG, text)
-    else:
-        # there is a label :(
-        space_found = False
-        for car in text:
-            if not space_found:
-                if car == CHAR_SPACE:
-                    otext += " %s "%COMMENT_TAG
-                    space_found = True
-            else:
-                otext += car
-    return otext
+    mode_normal = 1
+    mode_string = 2
+    mode = mode_normal
+    current_quote = None
     
-def removeComment(text):
-    otext = EMPTY_STR
-    out_str = 1
-    in_str = 2
-    mode = out_str
     for position, car in enumerate(text):
-        if mode == out_str:
-            if car == CHAR_QUOTE:
-                otext += car
-                mode = in_str
-            elif car == COMMENT_TAG:
+        if mode == mode_normal:
+            if car == COMMENT_TAG:
                 return otext.rstrip()
+            elif (car == CHAR_SINGLE_QUOTE) or (car == CHAR_QUOTE):
+                otext += car
+                current_quote = car
+                mode = mode_string
             else:
                 otext += car
-        elif mode == in_str:
-            if car == CHAR_QUOTE:
-                otext += car
-                mode = out_str
-            else:
-                otext += car
+        elif mode == mode_string:
+            otext += car
+            if car == current_quote:
+                if text[position -1] != CHAR_ANTISLASH:
+                    mode = mode_normal
+                    current_quote = None
+                    
+    # whole line is parser, last check:
+    if mode != mode_normal:
+        if line == None:
+            raise Exception("string not closed!")
         else:
             printError("string not closed!")
     return otext
@@ -173,29 +166,6 @@ def commentLine(text):
             else:
                 otext += car
     return otext
-
-def XX__commentLine(text):
-    if text.startswith(COMMENT_TAG):
-        # no labelo, no problemo!
-        return text
-    elif text.startswith(CHAR_SPACE):
-        # no labelo, no problemo!
-        return "%s%s"%(COMMENT_TAG, text)
-    else:
-        # don't comment all the line if it begins with a label
-        found = False
-        ret_text = EMPTY_STR
-        for car in text:
-            if found:
-                ret_text += car
-            else:
-                if not car in (CHAR_SPACE, COMMENT_TAG):
-                    ret_text += car
-                else:
-                    if car == COMMENT_TAG:
-                        ret_text +=" %s "%COMMENT_TAG
-                        found = True
-        return ret_text
 
 class SOURCE_LINE():
     def __init__(self, fname, text, num):
@@ -267,7 +237,6 @@ class SOURCE_FILE():
         elif word1 in PRECOMP_KEYWORDS:
             self.addLabel(SOURCE_LINE(fname, text, num + 1))
             #a precompiler's keyword is detected, let's add some code
-            writeln("%s\n%s\n"%(text, commentLine(text)))
             line = SOURCE_LINE(fname, commentLine(text), num + 1)                    
             self.__lines.append(line)
             
@@ -361,12 +330,14 @@ class SOURCE_FILE():
         labels.sort()
         return labels
         
-    def printLabels(self):
+    def saveLabels(self, fname):
         keys = self.__labels.keys()
         keys.sort()
-        for key in keys:
-            line = self.__labels[key]
-            writeln("%-16s %-16s %3d %s"%(key, line.getFname(), line.getNum(), line.getText()))
+        with open(fname, "w") as fp:
+            for key in keys:
+                fp.write("%s\n"%key)
+                line = self.__labels[key]
+                writeln("%-16s %-16s %3d %s"%(key, line.getFname(), line.getNum(), line.getText()))
 
     def getOutputSource(self):
         text = EMPTY_STR
@@ -422,6 +393,7 @@ def parseArguments():
     global NB_COLS
     global WARN_STR
     global WARN_LAB
+    global LFNAME
     
     index = 1
     ignored_paremeters = []
@@ -440,10 +412,12 @@ def parseArguments():
             index += 1
         elif arg == "-ofname":
             OFNAME = checkNextParameter(index, arg)
-            chekFile(OFNAME)
             index += 1
         elif arg == "-dfname":
             DFNAME = checkNextParameter(index, arg)
+            index += 1
+        elif arg == "-lfname":
+            LFNAME = checkNextParameter(index, arg)
             index += 1
         elif arg == "-nb_cols":
             NB_COLS = checkNextValue(index, arg)
@@ -487,6 +461,7 @@ def parseArguments():
         writeln("-ifname  %s"%(IFNAME))
         writeln("-ofname  %s"%(OFNAME))
         writeln("-dfname  %s"%(DFNAME))
+        writeln("-lfname  %s"%(LFNAME))
         writeln("-nb_cols %s"%(NB_COLS))
         for arg in ignored_paremeters:
             writeln("ignored parameter \"%s\""%arg)
@@ -494,18 +469,23 @@ def parseArguments():
 
 if __name__ == "__main__":
 
-    sys.argv = ('precompile.py', '-Wall', '-ifname',\
-    'monitor.asm', '-ofname', 'precompiled.asm','-dfname', 'full_prec.asm', '-nb_cols', '13') 
+    sys.argv = ('precompile.py', '-ifname',\
+    'monitor.asm', '-ofname', 'precompiled.asm',\
+    '-dfname', 'full_prec.asm', '-nb_cols', '13',\
+    '-lfname', 'prelabels.txt') 
 
     parseArguments()
     
     source = SOURCE_FILE(IFNAME)
     
     if OFNAME != None:
+        # saving the precompiled source file (all source files merged)
         source.saveOutputSource(OFNAME)
 
     if DFNAME != None:
+        # saving the debug file (same as precompiled but with more info)
         source.saveDebug(DFNAME)
         
-        write(source.getLabels())
-
+    if LFNAME != None:
+        # saving the labels file
+        source.saveLabels(LFNAME)
