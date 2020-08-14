@@ -6,7 +6,14 @@
     .include monitor_equates.asm
 
     * = $f000
-    
+source_start
+hooks
+    .word print
+    .word println
+    .word print_nibble
+    .word print_byte
+    .word print_word
+
 main
     jmp start
     .include monitor_stuff.asm
@@ -16,12 +23,12 @@ start
     ldx #<splash1
     ldy #>splash1
     jsr println
-dummylabel1
+
     ; print "version ...
     ldx #<splash2
     ldy #>splash2
     jsr println
-dummylabel2    
+
     ; print "start point is
     ldx #<main
     ldy #>main
@@ -92,7 +99,7 @@ print_word
     pla
     jmp print_byte
 
-irqz
+irq
     pla
     pla
     pla
@@ -104,29 +111,14 @@ nmi
     pla
     brk
 
-source_end
-
-splash1 .string              "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
+splash1 .string "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
     
-splash2
-    .string            "version 0.99 -------------------------- MMXX - Pierre Faller\n"
+splash2 .string "version 0.99 -------------------------- MMXX - Pierre Faller\n"
 
-start_mes
-    .string "start point is "
+start_mes .string "start point is "
 
-stop_mes
-    .string "stop point is "
-    .string "searching the small beast..." " and don't find it" + chr(255)
+stop_mes .string "stop point is "
 
 hextab .ch_array "0123456789ABCDEF"
 
-test6 .ch_array "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0a\x0b\x0c\x0d\x0e\x0f"
-
-    ; * = $fffa ; nmi vector
-    ; .word nmi
-    
-    ; * = $fffc ; run vector
-    ; .word main
-    
-    ; * = $fffe ; irq vector
-    ; .word irq
+source_end

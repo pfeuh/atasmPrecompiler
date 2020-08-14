@@ -1,7 +1,6 @@
-dummylabel1
-dummylabel2
 hextab
-irqz
+hooks
+irq
 main
 nmi
 print
@@ -12,15 +11,10 @@ print_out
 print_word
 println
 source_end
+source_start
 splash1
 splash2
 start
 start_mes
 stop
 stop_mes
-test1
-test2
-test3
-test4
-test5
-test6
