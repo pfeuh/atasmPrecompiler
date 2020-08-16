@@ -1,0 +1,577 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+
+def write(text):
+    sys.stdout.write(str(text))
+    
+def writeln(text):
+    write(text)
+    write("\n")
+
+text = """
+ADC 	AND 	ASL 	BCC 	BCS 	BEQ 	BIT 	BMI 	BNE 	BPL 	BRK 	BVC 	BVS 	CLC
+CLD 	CLI 	CLV 	CMP 	CPX 	CPY 	DEC 	DEX 	DEY 	EOR 	INC 	INX 	INY 	JMP
+JSR 	LDA 	LDX 	LDY 	LSR 	NOP 	ORA 	PHA 	PHP 	PLA 	PLP 	ROL 	ROR 	RTI
+RTS 	SBC 	SEC 	SED 	SEI 	STA 	STX 	STY 	TAX 	TAY 	TSX 	TXA 	TXS 
+"""
+
+modes = """
+		self.InsSet.append({'mnemo':'BRK','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'ASL','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'PHP','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.immediate})
+		self.InsSet.append({'mnemo':'ASL','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.absolute})
+		self.InsSet.append({'mnemo':'ASL','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BPL','hook':self.relative})
+		self.InsSet.append({'mnemo':'ORA','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'ASL','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CLC','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.absolx})
+		self.InsSet.append({'mnemo':'ASL','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'JSR','hook':self.absolute})
+		self.InsSet.append({'mnemo':'AND','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BIT','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'AND','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'ROL','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'PLP','hook':self.inherent})
+		self.InsSet.append({'mnemo':'AND','hook':self.immediate})
+		self.InsSet.append({'mnemo':'ROL','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BIT','hook':self.absolute})
+		self.InsSet.append({'mnemo':'AND','hook':self.absolute})
+		self.InsSet.append({'mnemo':'ROL','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BMI','hook':self.relative})
+		self.InsSet.append({'mnemo':'AND','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'AND','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'ROL','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SEC','hook':self.inherent})
+		self.InsSet.append({'mnemo':'AND','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ORA','hook':self.absolx})
+		self.InsSet.append({'mnemo':'ASL','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'RTI','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'LSR','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'PHA','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.immediate})
+		self.InsSet.append({'mnemo':'LSR','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'JMP','hook':self.absolute})
+		self.InsSet.append({'mnemo':'EOR','hook':self.absolute})
+		self.InsSet.append({'mnemo':'LSR','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BVC','hook':self.relative})
+		self.InsSet.append({'mnemo':'EOR','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'LSR','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CLI','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'EOR','hook':self.absolx})
+		self.InsSet.append({'mnemo':'LSR','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'RTS','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'ROR','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'PLA','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.immediate})
+		self.InsSet.append({'mnemo':'ROR','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'JMP','hook':self.indirect})
+		self.InsSet.append({'mnemo':'ADC','hook':self.absolute})
+		self.InsSet.append({'mnemo':'ROR','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BCS','hook':self.relative})
+		self.InsSet.append({'mnemo':'ADC','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'ROR','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SEI','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'ADC','hook':self.absolx})
+		self.InsSet.append({'mnemo':'ROR','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STA','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STY','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'STA','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'STX','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'DEY','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'TXA','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STY','hook':self.absolute})
+		self.InsSet.append({'mnemo':'STA','hook':self.absolute})
+		self.InsSet.append({'mnemo':'STX','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BCC','hook':self.relative})
+		self.InsSet.append({'mnemo':'STA','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STY','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STA','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'STX','hook':self.zeropagey})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'TYA','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STA','hook':self.absoly})
+		self.InsSet.append({'mnemo':'TXS','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'STA','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDY','hook':self.immediate})
+		self.InsSet.append({'mnemo':'LDA','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'LDX','hook':self.immediate})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDY','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'LDA','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'LDX','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'TAY','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDA','hook':self.immediate})
+		self.InsSet.append({'mnemo':'TAX','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDY','hook':self.absolute})
+		self.InsSet.append({'mnemo':'LDA','hook':self.absolute})
+		self.InsSet.append({'mnemo':'LDX','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BCS','hook':self.relative})
+		self.InsSet.append({'mnemo':'LDA','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDY','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'LDA','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'LDX','hook':self.zeropagey})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CLV','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDA','hook':self.absoly})
+		self.InsSet.append({'mnemo':'TSX','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDY','hook':self.inherent})
+		self.InsSet.append({'mnemo':'LDA','hook':self.absolx})
+		self.InsSet.append({'mnemo':'LDX','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPY','hook':self.immediate})
+		self.InsSet.append({'mnemo':'CMP','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPY','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'CMP','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'DEC','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'INY','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CMP','hook':self.immediate})
+		self.InsSet.append({'mnemo':'DEX','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPY','hook':self.absolute})
+		self.InsSet.append({'mnemo':'CMP','hook':self.absolute})
+		self.InsSet.append({'mnemo':'DEC','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BNE','hook':self.relative})
+		self.InsSet.append({'mnemo':'CMP','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CMP','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'DEC','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CLD','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CMP','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CMP','hook':self.absolx})
+		self.InsSet.append({'mnemo':'DEC','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPX','hook':self.immediate})
+		self.InsSet.append({'mnemo':'SBC','hook':self.indzerox})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPX','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'SBC','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'INC','hook':self.zeropage})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'INX','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SBC','hook':self.immediate})
+		self.InsSet.append({'mnemo':'NOP','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SBC','hook':self.inherent})
+		self.InsSet.append({'mnemo':'CPX','hook':self.absolute})
+		self.InsSet.append({'mnemo':'SBC','hook':self.absolute})
+		self.InsSet.append({'mnemo':'INC','hook':self.absolute})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'BEQ','hook':self.relative})
+		self.InsSet.append({'mnemo':'SBC','hook':self.indzeroy})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SBC','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'INC','hook':self.zeropagex})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SED','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SBC','hook':self.absoly})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+		self.InsSet.append({'mnemo':'SBC','hook':self.absolx})
+		self.InsSet.append({'mnemo':'INC','hook':self.absolx})
+		self.InsSet.append({'mnemo':'???','hook':self.inherent})
+"""
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mnemo = """
+BRK
+ORA
+???
+???
+???
+ORA
+ASL
+???
+PHP
+ORA
+ASL
+???
+???
+ORA
+ASL
+???
+BPL
+ORA
+???
+???
+???
+ORA
+ASL
+???
+CLC
+ORA
+???
+???
+???
+ORA
+ASL
+???
+JSR
+AND
+???
+???
+BIT
+AND
+ROL
+???
+PLP
+AND
+ROL
+???
+BIT
+AND
+ROL
+???
+BMI
+AND
+???
+???
+???
+AND
+ROL
+???
+SEC
+AND
+???
+???
+???
+ORA
+ASL
+???
+RTI
+EOR
+???
+???
+???
+EOR
+LSR
+???
+PHA
+EOR
+LSR
+???
+JMP
+EOR
+LSR
+???
+BVC
+EOR
+???
+???
+???
+EOR
+LSR
+???
+CLI
+EOR
+???
+???
+???
+EOR
+LSR
+???
+RTS
+ADC
+???
+???
+???
+ADC
+ROR
+???
+PLA
+ADC
+ROR
+???
+JMP
+ADC
+ROR
+???
+BCS
+ADC
+???
+???
+???
+ADC
+ROR
+???
+SEI
+ADC
+???
+???
+???
+ADC
+ROR
+???
+???
+STA
+???
+???
+STY
+STA
+STX
+???
+DEY
+???
+TXA
+???
+STY
+STA
+STX
+???
+BCC
+STA
+???
+???
+STY
+STA
+STX
+???
+TYA
+STA
+TXS
+???
+???
+STA
+???
+???
+LDY
+LDA
+LDX
+???
+LDY
+LDA
+LDX
+???
+TAY
+LDA
+TAX
+???
+LDY
+LDA
+LDX
+???
+BCS
+LDA
+???
+???
+LDY
+LDA
+LDX
+???
+CLV
+LDA
+TSX
+???
+LDY
+LDA
+LDX
+???
+CPY
+CMP
+???
+???
+CPY
+CMP
+DEC
+???
+INY
+CMP
+DEX
+???
+CPY
+CMP
+DEC
+???
+BNE
+CMP
+???
+???
+???
+CMP
+DEC
+???
+CLD
+CMP
+???
+???
+???
+CMP
+DEC
+???
+CPX
+SBC
+???
+???
+CPX
+SBC
+INC
+???
+INX
+SBC
+NOP
+SBC
+CPX
+SBC
+INC
+???
+BEQ
+SBC
+???
+???
+???
+SBC
+INC
+???
+SED
+SBC
+???
+???
+???
+SBC
+INC
+???
+"""
+
+def format(text, tab_name, prefix=None, nb_cols=8):
+    labels = []
+    for word in text.split():
+        if prefix != None:
+            label = "%s_%s"%(prefix, word)
+        else:
+            label = word
+        writeln("%s = '%s'"%(label, word.lower()))
+        labels.append(label)
+        
+    writeln("%s = {"%tab_name)
+    for num, label in enumerate(labels):
+        if not (num % 8):
+            line = "    "
+        line += "%s, "%label
+        if (num % 8) == 7:
+            writeln(line)
+            line = ""
+    if line != "":
+            writeln(line)
+    writeln("    }")
+    
+format(mnemo, "MNEMO")
+    
+

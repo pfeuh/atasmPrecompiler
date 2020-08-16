@@ -71,7 +71,7 @@ class ARGUMENT():
     def __init__(self, aname, atype=bool, check_minus=False, check_file=False, family=None, mandatory=False):
         self.__aname = aname
         if not atype in (int, bool, str):
-            raise Exception("not implemented argument type %s !"%type(atype))
+            self.raiseError("not implemented argument type %s !"%type(atype))
         self.__atype = atype
         self.__avalue = False
         self.__check_minus = check_minus != False
@@ -86,9 +86,9 @@ class ARGUMENT():
                         count += 1
                 if count != 1:
                     print count, family
-                    raise Exception("member '%s' already declared in family '%s' !"%(member, str(family)))
+                    self.raiseError("member '%s' already declared in family '%s' !"%(member, str(family)))
             if not aname in family:
-                raise Exception("argument '%s' not declared in family '%s' !"%(aname, str(family)))
+                self.raiseError("argument '%s' not declared in family '%s' !"%(aname, str(family)))
             self.__family = family
         else:
             self.__family = []
@@ -123,7 +123,7 @@ class ARGUMENT():
         if self.__atype == bool and type(value) == int:
             self.__avalue = value != False
         elif type(value) != self.__atype:
-            raise Exception("bad type %s for setting argument '%s' : type %s required"%(type(value), self.__aname, self.__atype))
+            self.raiseError("bad type %s for setting argument '%s' : type %s required"%(type(value), self.__aname, self.__atype))
         else:
             self.__avalue = value
 
@@ -159,20 +159,17 @@ class ARGUMENTS():
             otext += str(self.__args[key])
         return otext
 
-    def raiseError(self, message):
-        raise Exception(message)
-
     def addArgument(self, argument):
         if not argument.getName() in self.__args.keys():
             self.__args[argument.getName()] = argument
         else:
-            raise Exception("argument '%s' already processed!"%argument.getName())
+            self.raiseError("argument '%s' already processed!"%argument.getName())
 
     def getArgument(self, aname, strict=False):
         if aname in self.__args.keys():
             return self.__args[aname]
         if strict:
-            raise Exception("argument '%s' not found!"%aname)
+            self.raiseError("argument '%s' not found!"%aname)
 
     def getNextArgument(self, aname):
         if self.__index < (len(self.__words_to_parse) - 1):
@@ -200,12 +197,12 @@ class ARGUMENTS():
 
                     # checking if already processed
                     if aname in self.__processed:
-                        raise Exception("argument '%s' already processed!\n"%aname)
+                        self.raiseError("argument '%s' already processed!\n"%aname)
                         
                     family = arg.getFamily()
                     for member in family:
                         if member in self.__processed:
-                            raise Exception("argument '%s' & '%s' processed together!\n"%(aname, member))
+                            self.raiseError("argument '%s' & '%s' processed together!\n"%(aname, member))
                         
                     atype = arg.getType()
 
@@ -316,9 +313,9 @@ def readAtariBinFile(fname, verbose=False, check_eof=False):
     fp = open(fname, 'rb')
     magic_word = readWord(fp)
     if magic_word == None:
-        raise Exception("unexpected end of file '%s'!'"%fname)
+        raiseError("unexpected end of file '%s'!'"%fname)
     if magic_word != 0xffff:
-        raise Exception("file '%s' is not an Atari file!"%fname)
+        raiseError("file '%s' is not an Atari file!"%fname)
     first = readWord(fp)
     last = readWord(fp)
     if first != None and last != None:
@@ -326,7 +323,7 @@ def readAtariBinFile(fname, verbose=False, check_eof=False):
             writeln("%s <$%04x:$%04x> $%d bytes"%(fname, first, last, 1 - first + last))
         binary_code = [ord(car) for car in fp.read(last - first + 1)]
     else:
-        raise Exception("unexpected end of file '%s'!'"%fname)
+        raiseError("unexpected end of file '%s'!'"%fname)
     dummy = fp.read(1)
     if dummy != EMPTY_STR:
         if check_eof:
@@ -359,7 +356,7 @@ def makeROM(ap):
     if verbose:
         writeln("ROM at $%04x - size $%04x used bytes"%(labels['source_start'], len(body)))
     
-    vectors = (("nmi", -6, 'main'), ("run", -4, 'main'), ("irq", -6, 'irq'))
+    vectors = (("nmi", -6, 'nmi'), ("run", -4, 'main'), ("irq", -6, 'irq'))
     for vector in vectors:
         label = vector[2]
         value = labels[label]
@@ -377,33 +374,16 @@ def makeROM(ap):
     
     if verbose:
         writeln("ROM written as %s"%(rname))
+        writeln("\n")
     
-    for index, byte in enumerate(body):
-        if not (index % 16):
-            write("%04x"%(0xf000 + index))
-        write(" %02x"%body[index])
-        if (index % 16) == 15:
-            write("\n")
-        
-        
-        
-        
-        
-        
-        
-#~ * = $fffa ; nmi vector
-#~ .word nmi_in
-
-#~ * = $fffc ; run vector
-#~ .word main
-
-#~ * = $fffe ; irq vector
-#~ .word irq_in
- 
-    
+        for index, byte in enumerate(body):
+            if not (index % 16):
+                write("%04x"%(labels['source_start'] + index))
+            write(" %02x"%body[index])
+            if (index % 16) == 15:
+                write("\n")
 
 if __name__ == "__main__":
-
 
     ap = ARGUMENTS(warning_all=True)
     ap.addArgument(ARGUMENT('-verbose')) # blablabla...
@@ -415,7 +395,7 @@ if __name__ == "__main__":
     ap.addArgument(ARGUMENT('-rfname', str, check_minus=True, mandatory=True))  # output ROM file
     ap.addArgument(ARGUMENT('-fb', int, ))  # value for filling unused bytes of ROM
 
-    sys.argv = (sys.argv[0], '-ifname', 'monitor.bin', '-verbose', '-rfname', 'MONITOR', '-lfname', 'monitor.lbl', '-Wall', '-fb', '0xff')
+    #~ sys.argv = (sys.argv[0], '-ifname', 'monitor.bin', '-verbose', '-rfname', 'MONITOR', '-lfname', 'monitor.lbl', '-Wall', '-fb', '0xff')
 
     ap.parse(sys.argv)
     

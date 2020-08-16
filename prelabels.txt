@@ -1,8 +1,13 @@
 hextab
 hooks
 irq
+irq_loop
+irq_mes
+loop
 main
 nmi
+nmi_loop
+nmi_mes
 print
 print_byte
 print_l1
