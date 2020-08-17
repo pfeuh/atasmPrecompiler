@@ -42,8 +42,8 @@ if 1:
     TYPE_KEYWORD = 4
     TYPE_PONCTUATION = 5
     TYPE_STRING = 6
-    WORD_TYPES = (TYPE_VOID, TYPE_VARIABLE, TYPE_COMMAND, TYPE_MNEMO, TYPE_KEYWORD, TYPE_PONCTUATION)
-    TYPE_NAME = {TYPE_VOID:'void', TYPE_VARIABLE:'variable', TYPE_VARIABLE:'command', TYPE_MNEMO:'mnemo', TYPE_KEYWORD:'keyword', TYPE_PONCTUATION:'ponct',TYPE_STRING:'string'}
+    WORD_TYPES = (None, TYPE_VOID, TYPE_VARIABLE, TYPE_COMMAND, TYPE_MNEMO, TYPE_KEYWORD, TYPE_PONCTUATION, TYPE_STRING)
+    TYPE_NAME = {None:"None", TYPE_VOID:'void', TYPE_VARIABLE:'variable', TYPE_COMMAND:'command', TYPE_MNEMO:'mnemo', TYPE_KEYWORD:'keyword', TYPE_PONCTUATION:'ponct',TYPE_STRING:'string'}
 
     PONCTUATION = ('(', ')', ',', '#', '+', '-', '/', '*', '=', '<', '>', '&', '!', '|', '^')
     
@@ -337,7 +337,13 @@ def opcodeValue(opcode, mode):
                 return value
     # no opcode with this mode
     return None
-    
+
+def isString(label):
+    if label.startswith(CHAR_QUOTE) and label.endswith(CHAR_QUOTE):
+        return True
+    else:
+        return False
+
 class ASM_WORD():
     def __init__(self, label, line, num):
         self.__text = label
@@ -371,18 +377,8 @@ class ASM_WORD():
         self.__value = value
         self.__solved = True
 
-    def isUnknown(self):
-        if self.__wtype == TYPE_UNKNOWN:
-            return True
-        return False
-
-    def isLabel(self):
-        if self.__wtype == TYPE_LABEL:
-            return True
-        return False
-
-    def isValue(self):
-        if self.__wtype == TYPE_VALUE:
+    def isVariable(self):
+        if self.__wtype == TYPE_VARIABLE:
             return True
         return False
 
@@ -409,7 +405,12 @@ class ASM_WORD():
     def __str__(self):
         otext  = "%s "%{False:".", True:"X"}[self.isSolved()]
         otext += "%s "%self.getLabel()
+        #~ try:
         otext += "type %s "%TYPE_NAME[self.getType()]
+        #~ except:
+            #~ print self.__text, self.__value, self.__wtype
+            #~ sys.exit(123)
+        #~ otext += "type %s "%self.getType()
         return otext + CHAR_LF
 
 class SOURCE_LINE():
@@ -449,7 +450,7 @@ class ASM_LINE():
 
     def addWord(self, word):
         if word in (None, str):
-            printLink("", line.getLine())
+            printLink("", self.getLine())
             raise Exception("attempt to add a bad word '%s'!"%str(word))
             
         self.__words.append(word)
@@ -490,16 +491,16 @@ class ASM_LINE():
         otext = EMPTY_STR
         text = "%05d "%self.getLine().getNum()
         for word in self.__words:
-            try:
+            #~ try:
                 if word.isSolved():
                     text += str(word.getValue())
                 else:
                     text += word.getLabel()
-            except:
-                print self.__text
-                for word in self.__words:
-                    print word
-                sys.exit(123)
+            #~ except:
+                #~ print self.__text
+                #~ for word in self.__words:
+                    #~ print word
+                #~ sys.exit(123)
         otext += "%-40s %s\n"%(text, self.getLine().getText())
         return otext
         
@@ -518,14 +519,12 @@ class ASM_LINE():
                 #~ otext += "    %s\n"%(str(word))
         #~ return otext
             
-    def getLine(self):
-        return self.__line
-        
     def getWords(self):
         return self.__words
 
     def __str__(self):
-        otext = "%s\n"%self.getLine()
+        line = self.getLine()
+        otext = 'File "%s", line %d\n%s\n'%(line.getFname(), line.getNum(), line.getText())
         for word in self.__words:
             otext += "%s"%str(word)
         otext += "-" * 40
@@ -539,7 +538,7 @@ class ASM_FILE():
         self.__nb_cols = self.__params.get('-nb_cols')
         self.__org = self.getArgument('-org')
         if not os.path.isfile(self.__fname):
-            printError("file \"%s\" not found"%inc_fname, SOURCE_LINE(fname, CHAR_SPACE.join(sys.argv), 0))
+            printError("file \"%s\" not found"%self.__fname, SOURCE_LINE(fname, CHAR_SPACE.join(sys.argv), 0))
 
         # assembler stuff
         self.__source_lines = []
@@ -580,12 +579,15 @@ class ASM_FILE():
     def InitializeWord(self, label, word_num, line):
         word = ASM_WORD(label, line, word_num)
         label = word.getLabel()
+        test_value = False
+        
         if not word_num:
             # managing variables
             if labelIsOk(word.getLabel()):
                 word.setType(TYPE_VARIABLE)
             else:
                 word.setType(TYPE_VOID)
+                word.set("---")
         elif word_num == 1:
             #managing labels
             if labelIsOk(word.getLabel()):
@@ -612,19 +614,30 @@ class ASM_FILE():
                 word.setType(TYPE_KEYWORD)
             elif label in PONCTUATION:
                 word.setType(TYPE_PONCTUATION)
-            #managing variabes
+            #managing values
             elif label.startswith(CHAR_DOLLAR):
+                # vintage assemblers use $ instead of 0x for hex values
                 label = "0x" + label[1:]
+                test_value = True
             elif label.startswith(CHAR_TILD):
+                # vintage assemblers use ~ to prefix a binary value
                 label = "0b" + label[1:]
+                test_value = True
             elif label.startswith(CHAR_SINGLE_QUOTE):
+                # vintage assemblers use ' to prefix a single character
                 if len(label) != 2:
                     printError("syntax on word '%s'"%label, line)
                 else:
-                    value = ord(label[1])
-                    word.setLabel("$%04x"%value)
-                    word.set(value)
-            elif word.getType() == None:
+                    label = "0x%04x"%ord(label[1])
+                    test_value = True
+                    #~ word.set(value)
+            elif label[0] in "0123456789-":
+                # decimal value
+                test_value = True
+            elif isString(label):
+                word.setType(TYPE_VARIABLE)
+                
+            if test_value:
                 # let's test numerical values
                 success = False
                 try:
@@ -642,10 +655,11 @@ class ASM_FILE():
                         printError("unknown type for '%s'"%word, line)
                 else:
                     printError("syntax on word '%s'"%word, line)
-            else:
-                printError("Unexpected word '%s'"%label, line)
-        return word
             
+        # did we missed something?
+        if word.getType() == None:
+            printError("Unexpected word '%s'"%label, line)
+        return word
 
     def assemble(self):
         pc = self.__org;
@@ -715,16 +729,17 @@ class ASM_FILE():
             otext += line.getCode() + CHAR_LF
         return otext
 
-    def getPercent(self):
+    def getStatText(self):
         items = 0
         solved = 0
         for line in self.__asm_lines:
             for item in line.getWords():
-                items += 1
-                if item.isSolved():
-                    solved += 1
-        self.__percent = (solved / items) * 100.0
-        return self.__percent
+                if item.getType() != TYPE_VOID:
+                    items += 1
+                    if item.isSolved():
+                        solved += 1
+        self.__percent = (float(solved) / float(items)) * 100.0
+        return "%6.2f%% assembled (%d/%d)"%(self.__percent, solved, items)
 
     def __str__(self):
         otext = EMPTY_STR
@@ -749,7 +764,7 @@ class ARGUMENT():
                     if member == member2:
                         count += 1
                 if count != 1:
-                    print count, family
+                    #~ print count, family
                     raise Exception("member '%s' already declared in family '%s' !"%(member, str(family)))
             if not aname in family:
                 raise Exception("argument '%s' not declared in family '%s' !"%(aname, str(family)))
@@ -997,6 +1012,7 @@ if __name__ == "__main__":
 
     source.assemble()
     write(source)
+    writeln(source.getStatText())
 
     #~ pass_num = 1
     #~ percent = source.getPercent()
