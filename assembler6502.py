@@ -47,7 +47,7 @@ if 1:
 
     PONCTUATION = ('(', ')', ',', '#', '+', '-', '/', '*', '=', '<', '>', '&', '!', '|', '^')
     
-    COMMANDS = ('.byte', '.word', '.long', '.string', '.ch_array', '.ds', '*')
+    COMMANDS = ('.byte', '.word', '.long', '.string', '.ch_array', '.ds', '*', 'x', 'y')
     KEYWORDS = COMMANDS + PONCTUATION
 
     OPCODES = (
@@ -169,7 +169,7 @@ def writeln(text):
     write(text)
     write("\n")
 
-def printLink(message, line=None):
+def printLink(message=EMPTY_STR, line=None):
     if line != None:
         writeln('File "%s", line %d, %s'%(line.getFname(), line.getNum(), message))
         writeln(line.getText())
@@ -210,7 +210,7 @@ def labelIsOk(label):
             return False
     if label in OPCODES or label in PONCTUATION or label in KEYWORDS:
         return False
-    if label.lower in ('x', 'y'): # 6502 registers, appear in some instructions
+    if label.lower() in ('x', 'y'): # 6502 registers, appear in some instructions
         return False
     return True
 
@@ -295,19 +295,6 @@ def extractWordsFromLine(text, line=None):
         printError("string not closed!", line)
     return words
     
-#~ def getLabel(line, lower=True):
-    #~ text = removeComment(line.getText(), line)
-    #~ if text != None:
-        #~ if len(text):
-            #~ if text[0] not in NO_LABEL_FIRST_CHAR:
-                #~ word = text.split()[0]
-                #~ if lower:
-                    #~ word = word.lower()
-                #~ if not labelIsOk(word):
-                    #~ printError("label \"%s\" incorrect"%word, line)
-                #~ return word
-    #~ return None
-
 def commentLine(text, line):
     otext = EMPTY_STR
     if text.startswith(COMMENT_TAG):
@@ -344,6 +331,39 @@ def isString(label):
     else:
         return False
 
+class ASM_VARIABLE():
+    def __init__(self, vname):
+        self.__vname = vname
+        self.__value = None
+        
+    def getLabel(self):
+        return self.__vname
+
+    def set(self, value):
+        if type(value) != int:
+            printError("integer expected for %s. got %s"%(self.__name, str(value)))
+            
+        if value < 0 or value > 0xffff:
+            printError("variable %s out of range (%)"%(self.__name, value))
+        else:
+            self.__value = value
+        
+    def get(self, value):
+        return self.__value
+        
+    def isSolved(self):
+        return self._value != None
+        
+    def isByte(self):
+        return self._value < 0x100
+    
+    def __str__(self):
+        if self.__value != None:
+            value_text = "0x%04x"%self.__value
+        else:
+            value_text = "------"
+        return "%-016s %s\n"%(self.__vname, value_text) 
+
 class ASM_WORD():
     def __init__(self, label, line, num):
         self.__text = label
@@ -351,6 +371,23 @@ class ASM_WORD():
         self.__value = None
         self.__position = num
         self.__solved = False
+        self.__variable = None
+        self.__line = line
+
+    def getLine(self):
+        return self.__line
+
+    def hasVariable(self):
+        return self.__variable != None
+
+    def getVariable(self):
+        return self.__variable
+
+    def setVariable(self, value):
+        if self.__variable != None:
+            self.__variable.set(value)
+        else:
+            raise Exception("no variable binded to %s!"%self.getLabel())
 
     def solve(self):
         self.__solved = True
@@ -367,8 +404,13 @@ class ASM_WORD():
     def getType(self):
         return self.__wtype
 
-    def setType(self, wtype):
+    def setType(self, wtype, source=None):
         self.__wtype = wtype
+        if wtype == TYPE_VARIABLE:
+            if source == None:
+                raise Exception("for type TYPE_VARIABLE, source is a mandatory parameter")
+            variable = source.addVariable(self.getLabel())
+            self.__variable = variable
 
     def get(self):
         return self.__value
@@ -403,14 +445,16 @@ class ASM_WORD():
         return False
 
     def __str__(self):
-        otext  = "%s "%{False:".", True:"X"}[self.isSolved()]
-        otext += "%s "%self.getLabel()
-        #~ try:
-        otext += "type %s "%TYPE_NAME[self.getType()]
-        #~ except:
-            #~ print self.__text, self.__value, self.__wtype
-            #~ sys.exit(123)
-        #~ otext += "type %s "%self.getType()
+        if self.getType() == TYPE_VOID:
+            otext = "  --------"
+        else:
+            otext  = "%s "%{False:".", True:"X"}[self.isSolved()]
+            otext += "(%s) "%TYPE_NAME[self.getType()]
+            otext += "%s "%self.getLabel()
+        while len(otext) < 40:
+            otext += CHAR_SPACE
+        if self.hasVariable():
+            otext += str(self.getVariable())
         return otext + CHAR_LF
 
 class SOURCE_LINE():
@@ -477,54 +521,25 @@ class ASM_LINE():
         self.__solved = False
             
     def getCode(self):
-        otext = EMPTY_STR
+        otext = "%06d "%self.getLine().getNum()
         for word_num, word in enumerate(self.__words):
+            label = word.getLabel()
             if word_num:
-                otext += "%s "%word.getLabel()
+                otext += "%s "%label
             else:
-                otext += "   "
-        return otext + CHAR_LF
-        
-        
-        
-        
-        otext = EMPTY_STR
-        text = "%05d "%self.getLine().getNum()
-        for word in self.__words:
-            #~ try:
-                if word.isSolved():
-                    text += str(word.getValue())
+                if word.getType() == TYPE_VOID:
+                    otext += "   "
                 else:
-                    text += word.getLabel()
-            #~ except:
-                #~ print self.__text
-                #~ for word in self.__words:
-                    #~ print word
-                #~ sys.exit(123)
-        otext += "%-40s %s\n"%(text, self.getLine().getText())
-        return otext
-        
-        
-        #~ otext =  "%05d %s\n"%(self.__line.getNum(), self.__text)
-        #~ otext +=  "    %s\n"%(str(self.__bytes))
-        
-        #~ for num, word in enumerate(self.__words):
-            #~ otext += "    %02d %s\n"%(num+1, str(word))
-            #~ if num == 0:
-                #~ if not word.isLabel():
-                    #~ otext += "    --------\n"
-                #~ else:
-                    #~ otext += "    %s\n"%(str(word))
-            #~ else:
-                #~ otext += "    %s\n"%(str(word))
-        #~ return otext
-            
+                    otext += label
+        return otext + CHAR_LF
+
     def getWords(self):
         return self.__words
 
     def __str__(self):
         line = self.getLine()
-        otext = 'File "%s", line %d\n%s\n'%(line.getFname(), line.getNum(), line.getText())
+        #~ otext = 'File "%s", line %d\n%s\n'%(line.getFname(), line.getNum(), line.getText())
+        otext = '%06d %s\n'%(line.getNum(), line.getText())
         for word in self.__words:
             otext += "%s"%str(word)
         otext += "-" * 40
@@ -548,8 +563,13 @@ class ASM_FILE():
 
         # let's go!
         self.createAsmLines(self.__fname)
-        #~ self.createLineWords()        
     
+    def addVariable(self, label):
+        if not label in self.__variables.keys():
+            variable = ASM_VARIABLE(label)
+            self.__variables[label] = variable
+        return self.__variables[label]
+            
     def getArgument(self, pname):
         #getting an argument from commandline
         if pname in self.__params.keys():
@@ -581,21 +601,25 @@ class ASM_FILE():
         label = word.getLabel()
         test_value = False
         
+        if label.lower() == 'x':
+            pass
+        
+        
         if not word_num:
-            # managing variables
+            # managing variables, 1rst word can only be label
             if labelIsOk(word.getLabel()):
-                word.setType(TYPE_VARIABLE)
+                word.setType(TYPE_VARIABLE, self)
             else:
                 word.setType(TYPE_VOID)
                 word.set("---")
         elif word_num == 1:
-            #managing labels
+            #managing variable
             if labelIsOk(word.getLabel()):
-                word.setType(TYPE_VARIABLE)
-            
+                word.setType(TYPE_VARIABLE, self)
             # managing opcodes
             elif label.lower() in OPCODES:
-                word.setType(TYPE_VOID)
+                # insensitive case allowed
+                word.setType(TYPE_MNEMO)
             #managing commands
             elif label in COMMANDS:
                 word.setType(TYPE_KEYWORD)
@@ -604,7 +628,7 @@ class ASM_FILE():
         elif word_num >= 2:
             #managing variables
             if labelIsOk(word.getLabel()):
-                word.setType(TYPE_VARIABLE)
+                word.setType(TYPE_VARIABLE, self)
             #managing commands
             elif label in COMMANDS:
                 word.setType(TYPE_KEYWORD)
@@ -635,8 +659,8 @@ class ASM_FILE():
                 # decimal value
                 test_value = True
             elif isString(label):
-                word.setType(TYPE_VARIABLE)
-                
+                word.setType(TYPE_VARIABLE, self)
+                # no setting, it will come later
             if test_value:
                 # let's test numerical values
                 success = False
@@ -647,10 +671,9 @@ class ASM_FILE():
                     pass
                 if success:
                     if type(value) == int:
-                        word.setType(TYPE_VARIABLE)
-                        word.set(value)
-                    elif type(value) == str:
-                        word.setType(TYPE_VARIABLE)
+                        word.setType(TYPE_VARIABLE, self)
+                        #~ word.set(value)
+                        word.setVariable(value)
                     else:
                         printError("unknown type for '%s'"%word, line)
                 else:
@@ -659,6 +682,7 @@ class ASM_FILE():
         # did we missed something?
         if word.getType() == None:
             printError("Unexpected word '%s'"%label, line)
+            
         return word
 
     def assemble(self):
@@ -717,16 +741,16 @@ class ASM_FILE():
                                     #~ line.appendByte(byte)
                                     #~ line.appendByte(words[3].getValue())
 
-    def getSourcelines(self):
+    def getSourceText(self):
         otext = EMPTY_STR
         for line in self.__source_lines:
             otext += "File \"%s\", line %s, %s\n"%(line.getFname(), line.getNum(), line.getText())
         return otext
 
-    def getCode(self):
+    def getCodeText(self):
         otext = EMPTY_STR
         for line in self.__asm_lines:
-            otext += line.getCode() + CHAR_LF
+            otext += line.getCode()# + CHAR_LF
         return otext
 
     def getStatText(self):
@@ -740,6 +764,14 @@ class ASM_FILE():
                         solved += 1
         self.__percent = (float(solved) / float(items)) * 100.0
         return "%6.2f%% assembled (%d/%d)"%(self.__percent, solved, items)
+
+    def getVariablesText(self):
+        otext = EMPTY_STR
+        keys = self.__variables.keys()
+        keys.sort()
+        for key in keys:
+            otext += str(self.__variables[key])
+        return otext
 
     def __str__(self):
         otext = EMPTY_STR
@@ -997,22 +1029,32 @@ if __name__ == "__main__":
 
     fname = ap.get('-ifname')
 
-    #~ ofname = buildName(fname, "am_lines.asm")
-    #~ if ofname != None:
-        #~ # saving the short source file (no comment, no empty line)
-        #~ with open(ofname, "w") as fp:
-            #~ fp.write(source.getCode())
-    
-    #~ ofname = buildName(fname, "source_lines.asm")
-    #~ if ofname != None:
-        #~ # saving the short source file (no comment, no empty line)
-        #~ with open(ofname, "w") as fp:
-            #~ fp.write(source.getSourcelines())
-
-
     source.assemble()
-    write(source)
     writeln(source.getStatText())
+
+    ofname = buildName(fname, "asm_lines.asm")
+    if ofname != None:
+        # saving the short source file (no comment, no empty line)
+        with open(ofname, "w") as fp:
+            fp.write(source.getCodeText())
+    
+    ofname = buildName(fname, "asm_words.asm")
+    if ofname != None:
+        # saving the lines splitted in words
+        with open(ofname, "w") as fp:
+            fp.write(str(source))
+    
+    ofname = buildName(fname, "variables.asm")
+    if ofname != None:
+        # saving variables report
+        with open(ofname, "w") as fp:
+            fp.write(source.getVariablesText())
+
+    ofname = buildName(fname, "source.asm")
+    if ofname != None:
+        # saving the short source file with line and origin fname
+        with open(ofname, "w") as fp:
+            fp.write(source.getSourceText())
 
     #~ pass_num = 1
     #~ percent = source.getPercent()
