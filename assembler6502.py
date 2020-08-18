@@ -47,10 +47,11 @@ if 1:
 
     PONCTUATION = ('(', ')', ',', '#', '+', '-', '/', '*', '=', '<', '>', '&', '!', '|', '^')
     
-    COMMANDS = ('.byte', '.word', '.long', '.string', '.ch_array', '.ds', '*', 'x', 'y')
-    KEYWORDS = COMMANDS + PONCTUATION
+    COMMANDS = ('.byte', '.word', '.long', '.string', '.ch_array', '.ds', '*')
+    REGISTERS = ('x', 'y', 'X', 'Y')
+    KEYWORDS = COMMANDS + PONCTUATION + REGISTERS
 
-    OPCODES = (
+    OPCODES = [
         'brk', 'ora', 'asl', 'php', 'bpl', 'clc', 'jsr', 'and', 
         'bit', 'rol', 'plp', 'bmi', 'sec', 'rti', 'eor', 'lsr', 
         'pha', 'jmp', 'bvc', 'cli', 'rts', 'adc', 'ror', 'pla', 
@@ -58,9 +59,9 @@ if 1:
         'tya', 'txs', 'ldy', 'lda', 'ldx', 'tay', 'tax', 'clv', 
         'tsx', 'cpy', 'cmp', 'dec', 'iny', 'dex', 'bne', 'cld', 
         'cpx', 'sbc', 'inc', 'inx', 'nop', 'beq', 'sed', 
-        )
+        ]
 
-    MNEMOS = (
+    MNEMOS = [
         'brk', 'ora', None , None , None , 'ora', 'asl', None , 
         'php', 'ora', 'asl', None , None , 'ora', 'asl', None , 
         'bpl', 'ora', None , None , None , 'ora', 'asl', None , 
@@ -93,74 +94,87 @@ if 1:
         'inx', 'sbc', 'nop', 'sbc', 'cpx', 'sbc', 'inc', None , 
         'beq', 'sbc', None , None , None , 'sbc', 'inc', None , 
         'sed', 'sbc', None , None , None , 'sbc', 'inc', None , 
-        )
+        ]
 
-    MODES = (
-        'inherent' , 'indzerox' , None       , None       , 
-        None       , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        None       , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        'absolute' , 'indzerox' , None       , None       , 
-        'zeropage' , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        'inherent' , 'indzerox' , None       , None       , 
-        None       , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        'inherent' , 'indzerox' , None       , None       , 
-        None       , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        'indirect' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        None       , 'indzerox' , None       , None       , 
-        'zeropage' , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , None       , 'inherent' , None       , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        'inherent' , 'zeropagex', 'zeropagey', None       , 
-        'inherent' , 'absoly'   , 'inherent' , None       , 
-        None       , 'absolx'   , None       , None       , 
-        'immediate', 'indzerox' , 'immediate', None       , 
-        'zeropage' , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        'zeropagex', 'zeropagex', 'zeropagey', None       , 
-        'inherent' , 'absoly'   , 'inherent' , None       , 
-        'inherent' , 'absolx'   , 'absoly'   , None       , 
-        'immediate', 'indzerox' , None       , None       , 
-        'zeropage' , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , None       , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        'immediate', 'indzerox' , None       , None       , 
-        'zeropage' , 'zeropage' , 'zeropage' , None       , 
-        'inherent' , 'immediate', 'inherent' , 'inherent' , 
-        'absolute' , 'absolute' , 'absolute' , None       , 
-        'relative' , 'indzeroy' , None       , None       , 
-        None       , 'zeropagex', 'zeropagex', None       , 
-        'inherent' , 'absoly'   , None       , None       , 
-        None       , 'absolx'   , 'absolx'   , None       , 
-        )
+    INHERENT = 'inherent'
+    INDZEROX = 'indzerox'
+    ZEROPAGE = 'zeropage'
+    IMMEDIATE = 'immediate'
+    ABSOLUTE = 'absolute'
+    RELATIVE = 'relative'
+    INDZEROY = 'indzeroy'
+    ZEROPAGEX = 'zeropagex'
+    ABSOLY = 'absoly'
+    ABSOLX = 'absolx'
+    INDIRECT = 'indirect'
+    ZEROPAGEY = 'zeropagey'
+
+    MODES = [
+        INHERENT , INDZEROX , None     , None     , 
+        None     , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        None     , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        ABSOLUTE , INDZEROX , None     , None     , 
+        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        INHERENT , INDZEROX , None     , None     , 
+        None     , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        INHERENT , INDZEROX , None     , None     , 
+        None     , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        INDIRECT , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        None     , INDZEROX , None     , None     , 
+        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , None     , INHERENT , None     , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        INHERENT , ZEROPAGEX, ZEROPAGEY, None     , 
+        INHERENT , ABSOLY   , INHERENT , None     , 
+        None     , ABSOLX   , None     , None     , 
+        IMMEDIATE, INDZEROX , IMMEDIATE, None     , 
+        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        ZEROPAGEX, ZEROPAGEX, ZEROPAGEY, None     , 
+        INHERENT , ABSOLY   , INHERENT , None     , 
+        INHERENT , ABSOLX   , ABSOLY   , None     , 
+        IMMEDIATE, INDZEROX , None     , None     , 
+        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , None     , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        IMMEDIATE, INDZEROX , None     , None     , 
+        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
+        INHERENT , IMMEDIATE, INHERENT , INHERENT , 
+        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
+        RELATIVE , INDZEROY , None     , None     , 
+        None     , ZEROPAGEX, ZEROPAGEX, None     , 
+        INHERENT , ABSOLY   , None     , None     , 
+        None     , ABSOLX   , ABSOLX   , None     , 
+        ]
 
 def write(text):
     sys.stdout.write(str(text))
@@ -190,6 +204,14 @@ def printError(message, line=None):
     else:
         writeln('Error : %s'%(message))
     sys.exit(1)
+    #~ if ap.get('-debug'):
+        #~ # the goal is to trig an error, then, it's possible to follow the white rabbit
+        #~ 1/0
+    #~ elif line != None:
+        #~ writeln('File "%s", line %d, error : %s - %s'%(line.getFname(), line.getNum(), message, line.getText()))
+    #~ else:
+        #~ writeln('Error : %s'%(message))
+    #~ sys.exit(1)
 
 def buildName(old_name, new_name):
     fname = os.path.splitext(os.path.basename(old_name))[0]
@@ -208,7 +230,7 @@ def labelIsOk(label):
     for car in label[1:]:
         if not car in OTHER_CHAR:
             return False
-    if label in OPCODES or label in PONCTUATION or label in KEYWORDS:
+    if label.lower() in OPCODES or label in PONCTUATION or label in KEYWORDS:
         return False
     if label.lower() in ('x', 'y'): # 6502 registers, appear in some instructions
         return False
@@ -317,12 +339,14 @@ def commentLine(text, line):
                 otext += car
     return otext
 
-def opcodeValue(opcode, mode):
+def getOpcodeValue(opcode, mode, line):
     for value, item in enumerate(MNEMOS):
         if item == opcode:
             if MODES[value] == mode:
                 return value
+    print opcode, mode
     # no opcode with this mode
+    printError("illegal opcode '%s' (%s)"%(opcode, mode), line)
     return None
 
 def isString(label):
@@ -330,6 +354,15 @@ def isString(label):
         return True
     else:
         return False
+
+def placebo():
+    pass
+
+def diskSave(fname=None, hook=placebo, mode = "wb"):
+    if fname:
+        with open(fname, mode) as fp:
+            if hook:
+                fp.write(hook)
 
 class ASM_VARIABLE():
     def __init__(self, vname):
@@ -362,7 +395,7 @@ class ASM_VARIABLE():
             value_text = "0x%04x"%self.__value
         else:
             value_text = "------"
-        return "%-016s %s\n"%(self.__vname, value_text) 
+        return "%-016s %s"%(self.__vname, value_text) 
 
 class ASM_WORD():
     def __init__(self, label, line, num):
@@ -485,12 +518,6 @@ class ASM_LINE():
         self.__solved = False
         self.__bytes = []
         self.__words = []
-        #~ label = self.__words[0]
-        #~ if self.__words[0] == EMPTY_STR:
-            #~ label = "   "
-        #~ text = label
-        #~ text += CHAR_SPACE.join(self.__words[1:])
-        self.__text = text
 
     def addWord(self, word):
         if word in (None, str):
@@ -538,7 +565,6 @@ class ASM_LINE():
 
     def __str__(self):
         line = self.getLine()
-        #~ otext = 'File "%s", line %d\n%s\n'%(line.getFname(), line.getNum(), line.getText())
         otext = '%06d %s\n'%(line.getNum(), line.getText())
         for word in self.__words:
             otext += "%s"%str(word)
@@ -563,6 +589,7 @@ class ASM_FILE():
 
         # let's go!
         self.createAsmLines(self.__fname)
+        self.computeOpcodes()
     
     def addVariable(self, label):
         if not label in self.__variables.keys():
@@ -600,10 +627,10 @@ class ASM_FILE():
         word = ASM_WORD(label, line, word_num)
         label = word.getLabel()
         test_value = False
-        
-        if label.lower() == 'x':
+
+        if line.getNum() == 20:
             pass
-        
+                
         
         if not word_num:
             # managing variables, 1rst word can only be label
@@ -622,6 +649,8 @@ class ASM_FILE():
                 word.setType(TYPE_MNEMO)
             #managing commands
             elif label in COMMANDS:
+                word.setType(TYPE_KEYWORD)
+            elif label in REGISTERS:
                 word.setType(TYPE_KEYWORD)
             else:
                 printError("Unexpected word '%s'"%label, line)
@@ -685,67 +714,81 @@ class ASM_FILE():
             
         return word
 
-    def assemble(self):
-        pc = self.__org;
-        
+    def computeOpcodes(self):
         for asm_line in self.__asm_lines:
+            solved = False
+            line = asm_line.getLine()
+            
+            if line.getNum() == 20:
+                pass
+                
             words = asm_line.getWords()
             nb_words = len(words)
-            
-            #let's solve opcodes
             if nb_words >= 2:
-                word = words[1]
-                if not word.isSolved():
-                    if word.isMmemo():
-                        opcode = word.getLabel()
-                        if nb_words == 2:
-                            value = opcodeValue(opcode, 'inherent')
-                            if value == None:
-                                printError("illegal opcode '%s'"%opcode, asm_line.getLine())
-                            word.set(value)
-                     
-                
+                opcode = words[1].getLabel().lower()
+                if words[1].getType() == TYPE_MNEMO:
+                    if nb_words == 2:
+                        # solving inherent like NOP
+                        value = getOpcodeValue(opcode, INHERENT, line)
+                        words[1].set(value)
+                        solved = True
+                    if not solved:
+                        if nb_words >= 4:
+                            if words[2].getLabel() == "#":
+                                # solving immediate like ADC #$44
+                                value = getOpcodeValue(opcode, IMMEDIATE, line)
+                                words[1].set(value)
+                                del words[2]
+                                solved = True
+                                
+                                
+                                
+                                
+                    if not solved:
+                        if nb_words >= 7:
+                            if words[-1].getLabel() == ")":
+                                if words[-2].getLabel().lower() == "x":
+                                    if words[-3].getLabel() == ",":
+                                        if words[2].getLabel() == "(":
+                                            # solving indirect like ADC ($44,X)
+                                            value = getOpcodeValue(opcode, ZEROPAGEX, line)
+                                            words[1].set(value)
+                                            del words[2]
+                                            del words[-1]
+                                            del words[-1]
+                                            del words[-1]
+                                            solved = True
+                    if not solved:
+                        if nb_words >= 5:
+                            if words[-1].getLabel() == ")":
+                                if words[2].getLabel() == "(":
+                                    # solving indirect like jmp (1234)
+                                    value = getOpcodeValue(opcode, INDIRECT, line)
+                                    words[1].set(value)
+                                    del words[2]
+                                    del words[-1]
+                                    solved = True
+                    if not solved:
+                        if nb_words >= 5:
+                            if words[-1].getLabel().lower() == "x":
+                                if words[-2].getLabel() == ",":
+                                    # solving absolute,x like ADC $4400,X
+                                    value = getOpcodeValue(opcode, ABSOLX, line)
+                                    words[1].set(value)
+                                    del words[-1]
+                                    del words[-1]
+                                    solved = True
+                    if not solved:
+                        if nb_words >= 5:
+                            if words[-1].getLabel().lower() == "y":
+                                if words[-2].getLabel() == ",":
+                                    # solving absolute,x like ADC $4400,Y
+                                    value = getOpcodeValue(opcode, ABSOLY, line)
+                                    words[1].set(value)
+                                    del words[-1]
+                                    del words[-1]
+                                    solved = True
 
-
-        
-            #~ if len(words):
-                #~ # managing labels
-                #~ label = words[0].getWord()
-                #~ if words[0].isLabel():
-                    #~ words[0].setValue(pc)
-            #~ if len(words) >= 2:
-                #~ # managing inherent opcodes
-                #~ opcode = words[1].getWord()
-                #~ if opcode in OPCODES:
-                    #~ if len(words) == 2:
-                        #~ byte = self.getAsmByte(opcode, "inherent")
-                        #~ if byte == None:
-                            #~ printError("illegal address mode %s"%opcode, line.getLine())
-                        #~ else:
-                            #~ pc += 1
-                            #~ writeln(line.getLine().getText())
-                            #~ line.appendByte(byte)
-            #~ if len(words) >= 3:
-                #~ opcode = words[1].getWord()
-                #~ if opcode in OPCODES:
-                    #~ if len(words) >= 4 and words[2].getWord() == "#":
-                        #~ if len(words) == 4:
-                            #~ #managing immediate opcodes
-                            #~ byte = self.getAsmByte(opcode, "immediate")
-                            #~ if byte == None:
-                                #~ printError("illegal address mode %s"%opcode, line.getLine())
-                            #~ else:
-                                #~ if words[3].getValue() != None:
-                                    #~ pc += 1
-                                    #~ writeln(line.getLine().getText())
-                                    #~ line.appendByte(byte)
-                                    #~ line.appendByte(words[3].getValue())
-
-    def getSourceText(self):
-        otext = EMPTY_STR
-        for line in self.__source_lines:
-            otext += "File \"%s\", line %s, %s\n"%(line.getFname(), line.getNum(), line.getText())
-        return otext
 
     def getCodeText(self):
         otext = EMPTY_STR
@@ -770,7 +813,7 @@ class ASM_FILE():
         keys = self.__variables.keys()
         keys.sort()
         for key in keys:
-            otext += str(self.__variables[key])
+            otext += str(self.__variables[key]) + CHAR_LF
         return otext
 
     def __str__(self):
@@ -1027,66 +1070,9 @@ if __name__ == "__main__":
     # let's parse source file and clean it
     source = ASM_FILE(ap.getArgsDictionary())
 
-    fname = ap.get('-ifname')
-
-    source.assemble()
+    #~ source.assemble()
     writeln(source.getStatText())
 
-    ofname = buildName(fname, "asm_lines.asm")
-    if ofname != None:
-        # saving the short source file (no comment, no empty line)
-        with open(ofname, "w") as fp:
-            fp.write(source.getCodeText())
-    
-    ofname = buildName(fname, "asm_words.asm")
-    if ofname != None:
-        # saving the lines splitted in words
-        with open(ofname, "w") as fp:
-            fp.write(str(source))
-    
-    ofname = buildName(fname, "variables.asm")
-    if ofname != None:
-        # saving variables report
-        with open(ofname, "w") as fp:
-            fp.write(source.getVariablesText())
-
-    ofname = buildName(fname, "source.asm")
-    if ofname != None:
-        # saving the short source file with line and origin fname
-        with open(ofname, "w") as fp:
-            fp.write(source.getSourceText())
-
-    #~ pass_num = 1
-    #~ percent = source.getPercent()
-    #~ while 1:
-        #~ writeln('%6.2f%% assembler pass %d'%(percent, pass_num))
-        #~ source.assemble()
-        #~ pass_num += 1
-        #~ if pass_num > 20:
-            #~ writeln("Interrupted!")
-            #~ break
-    
-    #~ writeln(source.getLabels())
-    
-    #~ ofname = buildName(fname, "first_pass.asm")
-    #~ if ofname != None:
-        #~ # saving the short source file (no comment, no empty line)
-        #~ with open(ofname, "w") as fp:
-            #~ fp.write(source.getAsmlines())
-    
-    
-    #~ ofname = ap.get('-ofname')
-    #~ if ofname != None:
-        #~ # saving the precompiled source file (all source files merged)
-        #~ source.saveOutputSource(ofname)
-
-    #~ dfname = ap.get('-dfname')
-    #~ if dfname != None:
-        #~ # saving the debug file (same as precompiled but with more info)
-        #~ source.saveDebug(dfname)
-        
-    #~ lfname = ap.get('-lfname')
-    #~ if lfname != None:
-        #~ # saving the labels file
-        #~ source.saveLabels(lfname)
-        
+    diskSave(buildName(ap.get('-ifname'), "asm_lines.asm"), source.getCodeText())
+    diskSave(buildName(ap.get('-ifname'), "asm_words.asm"), str(source))
+    diskSave(buildName(ap.get('-ifname'), "variables.asm"), source.getVariablesText())

@@ -14,6 +14,10 @@
     x3 = "azerty"
 
     * = $f000
+    y
+    ;adc 
+    adc ($44,x)
+  ADC ($44,X)
 
 source_start
 
@@ -140,6 +144,15 @@ nmi
     jsr       print
 nmi_loop
     jmp nmi_loop
+
+    lda 1234, x
+    lda 12, x
+    lda 1234, y
+    lda 12, y
+    jmp (print)
+
+
+
 
 start_mes .string "free rom "
 

@@ -11,5 +11,8 @@ def writeln(text):
     write(text)
     write("\n")
 
-writeln(eval("0x0a"))
-cmp("toto", "titi")
+prog = ['', 'lda', '#', '3']
+
+writeln(prog)
+del prog[2]
+writeln(prog)

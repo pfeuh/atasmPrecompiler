@@ -269,14 +269,17 @@ table.append(('SBC','absolx'))
 table.append(('INC','absolx'))
 table.append(('???','inherent'))
 
-def format_sub(items, table_name, nb_cols=8, width=5):
-    writeln("%s = ("%table_name)
+def format_sub(items, table_name, nb_cols=8, width=5, quote=True):
+    writeln("%s = ["%table_name)
     for num, label in enumerate(items):
         if not (num % nb_cols):
             line = "    "
 
         if label != None:
-            label = "'%s'"%label
+            if quote:
+                label = "'%s'"%label
+            else:
+                label = "%s"%label.upper()
         else:
             label = "None"
         while len(label) < width:
@@ -288,12 +291,13 @@ def format_sub(items, table_name, nb_cols=8, width=5):
             line = ""
     if line != "":
             writeln(line)
-    writeln("    )\n")
+    writeln("    ]\n")
 
 def format(labels):
     opcodes = []
     mnemos = []
     modes = []
+    def_modes = []
 
     for num, item in enumerate(table):
         mnemo = item[0].lower()
@@ -307,9 +311,16 @@ def format(labels):
                 opcodes.append(mnemo)
         mnemos.append(mnemo)
         modes.append(mode)
+        if not mode in def_modes:
+            if mode != None:
+                def_modes.append(mode)
                     
     format_sub(opcodes, "OPCODES")
     format_sub(mnemos, "MNEMOS")
-    format_sub(modes, "MODES", nb_cols=4, width=11)
+    for mode in def_modes:
+        writeln("%s = '%s'"%(mode.upper(), mode))
+    writeln("")
+    
+    format_sub(modes, "MODES", nb_cols=4, width=9, quote=False)
                     
 format(table)
