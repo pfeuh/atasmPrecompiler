@@ -18,8 +18,10 @@ $f000            0xf000
 12               0x000c
 1234             0x04d2
 3                0x0003
+A                ------
 CHAR_RETURN      ------
 PUTSCR_REG       ------
+a                ------
 hextab           ------
 hooks            ------
 irq              ------

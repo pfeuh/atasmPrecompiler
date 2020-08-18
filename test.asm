@@ -18,6 +18,7 @@
     ;adc 
     adc ($44,x)
   ADC ($44,X)
+  ADC ($44),Y
 
 source_start
 
@@ -71,10 +72,10 @@ print_nibble
 
 print_byte
     pha
-    lsr
-    lsr
-    lsr
-    lsr
+    lsr a
+    lsr A
+    lsr a
+    lsr a
     jsr print_nibble
     pla
     jmp print_nibble

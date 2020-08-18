@@ -4,6 +4,8 @@
 import sys
 import os
 
+from tables6502 import *
+
 if 1:
     VERSION = "0.99"
     COMMENT_TAG = ";"
@@ -50,131 +52,6 @@ if 1:
     COMMANDS = ('.byte', '.word', '.long', '.string', '.ch_array', '.ds', '*')
     REGISTERS = ('x', 'y', 'X', 'Y')
     KEYWORDS = COMMANDS + PONCTUATION + REGISTERS
-
-    OPCODES = [
-        'brk', 'ora', 'asl', 'php', 'bpl', 'clc', 'jsr', 'and', 
-        'bit', 'rol', 'plp', 'bmi', 'sec', 'rti', 'eor', 'lsr', 
-        'pha', 'jmp', 'bvc', 'cli', 'rts', 'adc', 'ror', 'pla', 
-        'bcs', 'sei', 'sta', 'sty', 'stx', 'dey', 'txa', 'bcc', 
-        'tya', 'txs', 'ldy', 'lda', 'ldx', 'tay', 'tax', 'clv', 
-        'tsx', 'cpy', 'cmp', 'dec', 'iny', 'dex', 'bne', 'cld', 
-        'cpx', 'sbc', 'inc', 'inx', 'nop', 'beq', 'sed', 
-        ]
-
-    MNEMOS = [
-        'brk', 'ora', None , None , None , 'ora', 'asl', None , 
-        'php', 'ora', 'asl', None , None , 'ora', 'asl', None , 
-        'bpl', 'ora', None , None , None , 'ora', 'asl', None , 
-        'clc', 'ora', None , None , None , 'ora', 'asl', None , 
-        'jsr', 'and', None , None , 'bit', 'and', 'rol', None , 
-        'plp', 'and', 'rol', None , 'bit', 'and', 'rol', None , 
-        'bmi', 'and', None , None , None , 'and', 'rol', None , 
-        'sec', 'and', None , None , None , 'ora', 'asl', None , 
-        'rti', 'eor', None , None , None , 'eor', 'lsr', None , 
-        'pha', 'eor', 'lsr', None , 'jmp', 'eor', 'lsr', None , 
-        'bvc', 'eor', None , None , None , 'eor', 'lsr', None , 
-        'cli', 'eor', None , None , None , 'eor', 'lsr', None , 
-        'rts', 'adc', None , None , None , 'adc', 'ror', None , 
-        'pla', 'adc', 'ror', None , 'jmp', 'adc', 'ror', None , 
-        'bcs', 'adc', None , None , None , 'adc', 'ror', None , 
-        'sei', 'adc', None , None , None , 'adc', 'ror', None , 
-        None , 'sta', None , None , 'sty', 'sta', 'stx', None , 
-        'dey', None , 'txa', None , 'sty', 'sta', 'stx', None , 
-        'bcc', 'sta', None , None , 'sty', 'sta', 'stx', None , 
-        'tya', 'sta', 'txs', None , None , 'sta', None , None , 
-        'ldy', 'lda', 'ldx', None , 'ldy', 'lda', 'ldx', None , 
-        'tay', 'lda', 'tax', None , 'ldy', 'lda', 'ldx', None , 
-        'bcs', 'lda', None , None , 'ldy', 'lda', 'ldx', None , 
-        'clv', 'lda', 'tsx', None , 'ldy', 'lda', 'ldx', None , 
-        'cpy', 'cmp', None , None , 'cpy', 'cmp', 'dec', None , 
-        'iny', 'cmp', 'dex', None , 'cpy', 'cmp', 'dec', None , 
-        'bne', 'cmp', None , None , None , 'cmp', 'dec', None , 
-        'cld', 'cmp', None , None , None , 'cmp', 'dec', None , 
-        'cpx', 'sbc', None , None , 'cpx', 'sbc', 'inc', None , 
-        'inx', 'sbc', 'nop', 'sbc', 'cpx', 'sbc', 'inc', None , 
-        'beq', 'sbc', None , None , None , 'sbc', 'inc', None , 
-        'sed', 'sbc', None , None , None , 'sbc', 'inc', None , 
-        ]
-
-    INHERENT = 'inherent'
-    INDZEROX = 'indzerox'
-    ZEROPAGE = 'zeropage'
-    IMMEDIATE = 'immediate'
-    ABSOLUTE = 'absolute'
-    RELATIVE = 'relative'
-    INDZEROY = 'indzeroy'
-    ZEROPAGEX = 'zeropagex'
-    ABSOLY = 'absoly'
-    ABSOLX = 'absolx'
-    INDIRECT = 'indirect'
-    ZEROPAGEY = 'zeropagey'
-
-    MODES = [
-        INHERENT , INDZEROX , None     , None     , 
-        None     , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        None     , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        ABSOLUTE , INDZEROX , None     , None     , 
-        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        INHERENT , INDZEROX , None     , None     , 
-        None     , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        INHERENT , INDZEROX , None     , None     , 
-        None     , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        INDIRECT , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        None     , INDZEROX , None     , None     , 
-        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , None     , INHERENT , None     , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        INHERENT , ZEROPAGEX, ZEROPAGEY, None     , 
-        INHERENT , ABSOLY   , INHERENT , None     , 
-        None     , ABSOLX   , None     , None     , 
-        IMMEDIATE, INDZEROX , IMMEDIATE, None     , 
-        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        ZEROPAGEX, ZEROPAGEX, ZEROPAGEY, None     , 
-        INHERENT , ABSOLY   , INHERENT , None     , 
-        INHERENT , ABSOLX   , ABSOLY   , None     , 
-        IMMEDIATE, INDZEROX , None     , None     , 
-        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , None     , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        IMMEDIATE, INDZEROX , None     , None     , 
-        ZEROPAGE , ZEROPAGE , ZEROPAGE , None     , 
-        INHERENT , IMMEDIATE, INHERENT , INHERENT , 
-        ABSOLUTE , ABSOLUTE , ABSOLUTE , None     , 
-        RELATIVE , INDZEROY , None     , None     , 
-        None     , ZEROPAGEX, ZEROPAGEX, None     , 
-        INHERENT , ABSOLY   , None     , None     , 
-        None     , ABSOLX   , ABSOLX   , None     , 
-        ]
 
 def write(text):
     sys.stdout.write(str(text))
@@ -539,7 +416,10 @@ class ASM_LINE():
         return self.__line
 
     def isSolved(self):
-        return self.__solved
+        for word in self.__words:
+            if not word.isSolved():
+                return False
+        return True
             
     def setSolved(self):
         self.__solved = True
@@ -565,7 +445,10 @@ class ASM_LINE():
 
     def __str__(self):
         line = self.getLine()
-        otext = '%06d %s\n'%(line.getNum(), line.getText())
+        solved_text = "."
+        if self.isSolved():
+            solved_text = "X"
+        otext = '%s %06d %s\n'%(solved_text, line.getNum(), line.getText())
         for word in self.__words:
             otext += "%s"%str(word)
         otext += "-" * 40
@@ -732,6 +615,13 @@ class ASM_FILE():
                         value = getOpcodeValue(opcode, INHERENT, line)
                         words[1].set(value)
                         solved = True
+                    if nb_words == 3:
+                        # solving accumulator like ASL A
+                        if words[2].getLabel().lower() == "a":
+                            value = getOpcodeValue(opcode, ACCUMULATOR, line)
+                            words[1].set(value)
+                            solved = True
+                            del words[2]
                     if not solved:
                         if nb_words >= 4:
                             if words[2].getLabel() == "#":
@@ -740,10 +630,6 @@ class ASM_FILE():
                                 words[1].set(value)
                                 del words[2]
                                 solved = True
-                                
-                                
-                                
-                                
                     if not solved:
                         if nb_words >= 7:
                             if words[-1].getLabel() == ")":
@@ -758,6 +644,27 @@ class ASM_FILE():
                                             del words[-1]
                                             del words[-1]
                                             solved = True
+
+
+                    if not solved:
+                        if nb_words >= 7:
+                            if words[-1].getLabel().lower() == "y":
+                                if words[-2].getLabel() == ",":
+                                    if words[-3].getLabel() == ")":
+                                        if words[2].getLabel() == "(":
+                                            # solving indirect like ADC ($44),Y
+                                            value = getOpcodeValue(opcode, INDZEROY, line)
+                                            words[1].set(value)
+                                            del words[2]
+                                            del words[-1]
+                                            del words[-1]
+                                            del words[-1]
+                                            solved = True
+
+
+
+
+
                     if not solved:
                         if nb_words >= 5:
                             if words[-1].getLabel() == ")":
