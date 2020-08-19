@@ -3,8 +3,14 @@
     ; a 4ko ROM monitor for vosc6502  ;
     ;---------------------------------;
 
-    .include monitor_equates.asm
+;    .include monitor_equates.asm
 
+    ; special characters
+    CHAR_RETURN = $0a
+    
+    ;hardware registers
+    PUTSCR_REG = $bf00
+    
     * = $f000
 
 source_start
@@ -17,7 +23,7 @@ hooks
 
 main
     jmp start
-    .include monitor_sub.asm
+    ; .include monitor_sub.asm
 
 start
 

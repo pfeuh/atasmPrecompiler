@@ -240,6 +240,9 @@ def diskSave(fname=None, hook=placebo, mode = "wb"):
             if hook:
                 fp.write(hook)
 
+def getInstructionSize(opcode):
+    return CODE_SIZES[opcode]
+
 class ASM_VARIABLE():
     def __init__(self, vname):
         self.__vname = vname
@@ -257,14 +260,14 @@ class ASM_VARIABLE():
         else:
             self.__value = value
         
-    def get(self, value):
+    def get(self):
         return self.__value
         
     def isSolved(self):
-        return self._value != None
+        return self.__value != None
         
     def isByte(self):
-        return self._value < 0x100
+        return self.__value < 0x100
     
     def __str__(self):
         if self.__value != None:
@@ -302,6 +305,8 @@ class ASM_WORD():
         self.__solved = True
         
     def isSolved(self):
+        if self.__wtype == TYPE_VARIABLE:
+            return self.__variable.isSolved()
         return self.__solved
 
     def getLabel(self):
@@ -460,6 +465,7 @@ class ASM_FILE():
         self.__fname = self.getArgument('-ifname')
         self.__nb_cols = self.__params.get('-nb_cols')
         self.__org = self.getArgument('-org')
+        self.__PC = None
         if not os.path.isfile(self.__fname):
             printError("file \"%s\" not found"%self.__fname, SOURCE_LINE(fname, CHAR_SPACE.join(sys.argv), 0))
 
@@ -472,7 +478,19 @@ class ASM_FILE():
         # let's go!
         self.createAsmLines(self.__fname)
         self.computeOpcodes()
-    
+        #~ self.computeAffectations()
+
+    def initPC(self):
+        self.__PC = self.__org
+        return self.__PC
+        
+    def getPC(self):
+        return self.__PC
+        
+    def adjustPC(self, size):
+        self.__PC += size
+        return self.__PC
+        
     def addVariable(self, label):
         if not label in self.__variables.keys():
             variable = ASM_VARIABLE(label)
@@ -510,10 +528,6 @@ class ASM_FILE():
         label = word.getLabel()
         test_value = False
 
-        if line.getNum() == 20:
-            pass
-                
-        
         if not word_num:
             # managing variables, 1rst word can only be label
             if labelIsOk(word.getLabel()):
@@ -597,12 +611,18 @@ class ASM_FILE():
         return word
 
     def computeOpcodes(self):
+        pc = self.initPC()
+        
         for asm_line in self.__asm_lines:
             solved = False
             line = asm_line.getLine()
-            
             words = asm_line.getWords()
             nb_words = len(words)
+            
+            if len(words):
+                if words[0].getType() == TYPE_VARIABLE:
+                    words[0].setVariable(pc)
+            
             if nb_words >= 2:
                 opcode = words[1].getLabel().lower()
                 if words[1].getType() == TYPE_MNEMO:
@@ -610,12 +630,14 @@ class ASM_FILE():
                     if opcode in RELATIVE_OPCODES:
                         value = getOpcodeValue(opcode, RELATIVE, line)
                         words[1].set(value)
+                        pc = self.adjustPC(getInstructionSize(value))
                         solved = True
 # mode Implied
                     if not solved:
                         if opcode in IMPLIED_OPCODES:
                             value = getOpcodeValue(opcode, IMPLIED, line)
                             words[1].set(value)
+                            pc = self.adjustPC(getInstructionSize(value))
                             solved = True
                     
                     if not solved:
@@ -629,6 +651,7 @@ class ASM_FILE():
                             if words[2].getLabel().lower() == "a":
                                 value = getOpcodeValue(opcode, ACCUMULATOR, line)
                                 words[1].set(value)
+                                pc = self.adjustPC(getInstructionSize(value))
                                 solved = True
                                 del words[2]
 # mode Immediate
@@ -638,6 +661,7 @@ class ASM_FILE():
                                 value = getOpcodeValue(opcode, IMMEDIATE, line)
                                 words[1].set(value)
                                 del words[2]
+                                pc = self.adjustPC(getInstructionSize(value))
                                 solved = True
 # mode Indirect,X
                     if not solved:
@@ -652,6 +676,7 @@ class ASM_FILE():
                                             del words[-1]
                                             del words[-1]
                                             del words[-1]
+                                            pc = self.adjustPC(getInstructionSize(value))
                                             solved = True
 # mode Indirect,Y
                     if not solved:
@@ -666,6 +691,7 @@ class ASM_FILE():
                                             del words[-1]
                                             del words[-1]
                                             del words[-1]
+                                            pc = self.adjustPC(getInstructionSize(value))
                                             solved = True
 # mode Absolute,X & Zero Page,X - choice done when size of operand will be known
                     if not solved:
@@ -678,6 +704,7 @@ class ASM_FILE():
                                             del words[2]
                                             del words[-1]
                                             del words[-2]
+                                            pc = self.adjustPC(getInstructionSize(value))
                                             solved = True
 # mode Absolute,Y  & Zero Page,Y - choice done when size of operand will be known
                     if not solved:
@@ -690,6 +717,7 @@ class ASM_FILE():
                                             del words[2]
                                             del words[-1]
                                             del words[-2]
+                                            pc = self.adjustPC(getInstructionSize(value))
                                             solved = True
 # mode Indirect
                     if not solved:
@@ -700,6 +728,7 @@ class ASM_FILE():
                                     words[1].set(value)
                                     del words[2]
                                     del words[-1]
+                                    pc = self.adjustPC(getInstructionSize(value))
                                     solved = True
 # mode Absolute & Zero Page - choice done when size of operand will be known
                     if not solved:
@@ -712,9 +741,28 @@ class ASM_FILE():
                             if not found_bad:
                                 value = getOpcodeValue(opcode, ABSOLUTE, line)
                                 words[1].set(value)
+                                pc = self.adjustPC(getInstructionSize(value))
                                 solved = True
                     if not solved:
                         printWarning("unsolved opcode %s"%opcode, line)
+
+    def computeAffectations(self):
+        # solve some affectations
+        lines_to_solve = []
+        for asm_line in self.__asm_lines:
+            line = asm_line.getLine()
+            words = asm_line.getWords()
+            if len(words) == 4:
+                if words[2].getLabel() == "=":
+                    if words[3].isVariable():
+                        variable = words[3].getVariable()
+                        if words[3].isSolved():
+                            words[1].setVariable(variable.get())
+                            asm_line.setSolved()
+                            del words[2]
+
+                            
+
 
     def getCodeText(self):
         otext = EMPTY_STR

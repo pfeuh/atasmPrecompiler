@@ -137,3 +137,22 @@ IMPLIED_OPCODES = (
     'sed', 
     )
 
+CODE_SIZES = (
+    1   , 2   , None, None, None, 2   , 2   , None, 1   , 2   , 1   , None, None, 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    3   , 2   , None, None, 2   , 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    1   , 2   , None, None, None, 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    1   , 2   , None, None, None, 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    None, 2   , None, None, 2   , 2   , 2   , None, 1   , None, 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, 2   , 2   , 2   , None, 1   , 3   , 1   , None, None, 3   , None, None, 
+    2   , 2   , 2   , None, 2   , 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, 2   , 2   , 2   , None, 1   , 3   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, 2   , 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    2   , 2   , None, None, 2   , 2   , 2   , None, 1   , 2   , 1   , None, 3   , 3   , 3   , None, 
+    2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
+    )
+

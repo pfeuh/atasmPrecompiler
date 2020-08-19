@@ -11,16 +11,10 @@
     ;hardware registers
     PUTSCR_REG = $bf00
 
-    zp = 0
-
-    zp = zp + 2
-    op1 = zp
-
-    zp = zp + 2
-    op2 = zp
-
-    zp = zp + 2
-    op3 = zp
+    op1 = 0
+    op2 = 2
+    op3 = 4
+    zp  = 6
 ;   End of inclusion of file monitor_equates.asm
 
     * = $f000
@@ -71,10 +65,10 @@ print_nibble
 
 print_byte
     pha
-    lsr
-    lsr
-    lsr
-    lsr
+    lsr a
+    lsr a
+    lsr a
+    lsr a
     jsr print_nibble
     pla
     jmp print_nibble
