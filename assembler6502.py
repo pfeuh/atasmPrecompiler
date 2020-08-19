@@ -327,11 +327,16 @@ class ASM_WORD():
             self.__variable = variable
 
     def get(self):
+        if self.__wtype == TYPE_VARIABLE:
+            return self.__variable.get()
         return self.__value
 
     def set(self, value):
-        self.__value = value
-        self.__solved = True
+        if self.__wtype == TYPE_VARIABLE:
+            self.__variable.set(value)
+        else:
+            self.__value = value
+            self.__solved = True
 
     def isVariable(self):
         if self.__wtype == TYPE_VARIABLE:

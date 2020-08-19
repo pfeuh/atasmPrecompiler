@@ -1,4 +1,5 @@
 eclipse.preferences.version=1
 encoding/arguments.py=utf-8
 encoding/assembler6502.py=utf-8
+encoding/test_solver.py=utf-8
 encoding/utest_arguments.py=utf-8
