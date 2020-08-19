@@ -221,7 +221,6 @@ def getOpcodeValue(opcode, mode, line):
         if item == opcode:
             if MODES[value] == mode:
                 return value
-    print opcode, mode
     # no opcode with this mode
     printError("illegal opcode '%s' (%s)"%(opcode, mode), line)
     return None
@@ -602,100 +601,120 @@ class ASM_FILE():
             solved = False
             line = asm_line.getLine()
             
-            if line.getNum() == 20:
-                pass
-                
             words = asm_line.getWords()
             nb_words = len(words)
             if nb_words >= 2:
                 opcode = words[1].getLabel().lower()
                 if words[1].getType() == TYPE_MNEMO:
-                    if nb_words == 2:
-                        # solving inherent like NOP
-                        value = getOpcodeValue(opcode, INHERENT, line)
+# mode Relative
+                    if opcode in RELATIVE_OPCODES:
+                        value = getOpcodeValue(opcode, RELATIVE, line)
                         words[1].set(value)
                         solved = True
-                    if nb_words == 3:
-                        # solving accumulator like ASL A
-                        if words[2].getLabel().lower() == "a":
-                            value = getOpcodeValue(opcode, ACCUMULATOR, line)
+# mode Implied
+                    if not solved:
+                        if opcode in IMPLIED_OPCODES:
+                            value = getOpcodeValue(opcode, IMPLIED, line)
                             words[1].set(value)
                             solved = True
-                            del words[2]
+                    
+                    if not solved:
+                        # all opcodes without operand are done, it's a bad one 
+                        if len(words) == 2:
+                            printError("illegal opcode '%s'"%(opcode), line)
+                            
+# mode Accumulator
+                    if not solved:
+                        if nb_words == 3:
+                            if words[2].getLabel().lower() == "a":
+                                value = getOpcodeValue(opcode, ACCUMULATOR, line)
+                                words[1].set(value)
+                                solved = True
+                                del words[2]
+# mode Immediate
                     if not solved:
                         if nb_words >= 4:
                             if words[2].getLabel() == "#":
-                                # solving immediate like ADC #$44
                                 value = getOpcodeValue(opcode, IMMEDIATE, line)
                                 words[1].set(value)
                                 del words[2]
                                 solved = True
+# mode Indirect,X
                     if not solved:
                         if nb_words >= 7:
                             if words[-1].getLabel() == ")":
                                 if words[-2].getLabel().lower() == "x":
                                     if words[-3].getLabel() == ",":
                                         if words[2].getLabel() == "(":
-                                            # solving indirect like ADC ($44,X)
-                                            value = getOpcodeValue(opcode, ZEROPAGEX, line)
+                                            value = getOpcodeValue(opcode, INDIRECTX, line)
                                             words[1].set(value)
                                             del words[2]
                                             del words[-1]
                                             del words[-1]
                                             del words[-1]
                                             solved = True
-
-
+# mode Indirect,Y
                     if not solved:
                         if nb_words >= 7:
                             if words[-1].getLabel().lower() == "y":
                                 if words[-2].getLabel() == ",":
                                     if words[-3].getLabel() == ")":
                                         if words[2].getLabel() == "(":
-                                            # solving indirect like ADC ($44),Y
-                                            value = getOpcodeValue(opcode, INDZEROY, line)
+                                            value = getOpcodeValue(opcode, INDIRECTY, line)
                                             words[1].set(value)
                                             del words[2]
                                             del words[-1]
                                             del words[-1]
                                             del words[-1]
                                             solved = True
-
-
-
-
-
+# mode Absolute,X & Zero Page,X - choice done when size of operand will be known
+                    if not solved:
+                        if nb_words >= 7:
+                            if words[-1].getLabel().lower() == "x":
+                                if words[-2].getLabel().lower() == ",":
+                                        if words[2].getLabel() != "(":
+                                            value = getOpcodeValue(opcode, ABSOLUTEX, line)
+                                            words[1].set(value)
+                                            del words[2]
+                                            del words[-1]
+                                            del words[-2]
+                                            solved = True
+# mode Absolute,Y  & Zero Page,Y - choice done when size of operand will be known
+                    if not solved:
+                        if nb_words >= 7:
+                            if words[-1].getLabel().lower() == "y":
+                                if words[-2].getLabel().lower() == ",":
+                                        if words[2].getLabel() != "(":
+                                            value = getOpcodeValue(opcode, ABSOLUTEY, line)
+                                            words[1].set(value)
+                                            del words[2]
+                                            del words[-1]
+                                            del words[-2]
+                                            solved = True
+# mode Indirect
                     if not solved:
                         if nb_words >= 5:
                             if words[-1].getLabel() == ")":
                                 if words[2].getLabel() == "(":
-                                    # solving indirect like jmp (1234)
                                     value = getOpcodeValue(opcode, INDIRECT, line)
                                     words[1].set(value)
                                     del words[2]
                                     del words[-1]
                                     solved = True
+# mode Absolute & Zero Page - choice done when size of operand will be known
                     if not solved:
-                        if nb_words >= 5:
-                            if words[-1].getLabel().lower() == "x":
-                                if words[-2].getLabel() == ",":
-                                    # solving absolute,x like ADC $4400,X
-                                    value = getOpcodeValue(opcode, ABSOLX, line)
-                                    words[1].set(value)
-                                    del words[-1]
-                                    del words[-1]
-                                    solved = True
+                        if nb_words >= 2:
+                            found_bad = False
+                            for unknown_word in words[2:]:
+                                if unknown_word.getLabel().lower in (',', 'x', 'y', 'a'):
+                                    found_bad = True
+                                    break
+                            if not found_bad:
+                                value = getOpcodeValue(opcode, ABSOLUTE, line)
+                                words[1].set(value)
+                                solved = True
                     if not solved:
-                        if nb_words >= 5:
-                            if words[-1].getLabel().lower() == "y":
-                                if words[-2].getLabel() == ",":
-                                    # solving absolute,x like ADC $4400,Y
-                                    value = getOpcodeValue(opcode, ABSOLY, line)
-                                    words[1].set(value)
-                                    del words[-1]
-                                    del words[-1]
-                                    solved = True
-
+                        printWarning("unsolved opcode %s"%opcode, line)
 
     def getCodeText(self):
         otext = EMPTY_STR
