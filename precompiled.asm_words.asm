@@ -40,47 +40,47 @@ X (variable) 6                          6                0x0006
 . (keyword) =                           
 X (variable) $f000                      $f000            0xf000
 ----------------------------------------
-X 000022 source_start
-X (variable) source_start               source_start     0x0200
+. 000022 source_start
+. (variable) source_start               source_start     ------
 ----------------------------------------
-X 000024 hooks
-X (variable) hooks                      hooks            0x0200
+. 000024 hooks
+. (variable) hooks                      hooks            ------
 ----------------------------------------
 . 000025     .word print
   --------                              
 . (keyword) .word                       
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000026     .word print_nibble
   --------                              
 . (keyword) .word                       
-X (variable) print_nibble               print_nibble     0x0221
+. (variable) print_nibble               print_nibble     ------
 ----------------------------------------
 . 000027     .word print_byte
   --------                              
 . (keyword) .word                       
-X (variable) print_byte                 print_byte       0x022b
+. (variable) print_byte                 print_byte       ------
 ----------------------------------------
 . 000028     .word print_word
   --------                              
 . (keyword) .word                       
-X (variable) print_word                 print_word       0x0237
+. (variable) print_word                 print_word       ------
 ----------------------------------------
-X 000030 main
-X (variable) main                       main             0x0200
+. 000030 main
+. (variable) main                       main             ------
 ----------------------------------------
-X 000031     jmp start
+. 000031     jmp start
   --------                              
 X (mnemo) jmp                           
-X (variable) start                      start            0x0240
+. (variable) start                      start            ------
 ----------------------------------------
-X 000035 println
-X (variable) println                    println          0x0203
+. 000035 println
+. (variable) println                    println          ------
 ----------------------------------------
-X 000036     jsr print
+. 000036     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000037     lda #CHAR_RETURN
   --------                              
@@ -96,8 +96,8 @@ X 000039     rts
   --------                              
 X (mnemo) rts                           
 ----------------------------------------
-X 000041 print
-X (variable) print                      print            0x020c
+. 000041 print
+. (variable) print                      print            ------
 ----------------------------------------
 . 000043     stx op1
   --------                              
@@ -116,8 +116,8 @@ X 000045     ldy #0
 X (mnemo) ldy                           
 X (variable) 0                          0                0x0000
 ----------------------------------------
-X 000047 print_l1
-X (variable) print_l1                   print_l1         0x0214
+. 000047 print_l1
+. (variable) print_l1                   print_l1         ------
 ----------------------------------------
 . 000048     lda (op1),y
   --------                              
@@ -129,10 +129,10 @@ X 000049     cmp #0
 X (mnemo) cmp                           
 X (variable) 0                          0                0x0000
 ----------------------------------------
-X 000050     beq print_out
+. 000050     beq print_out
   --------                              
 X (mnemo) beq                           
-X (variable) print_out                  print_out        0x0220
+. (variable) print_out                  print_out        ------
 ----------------------------------------
 . 000051     sta PUTSCR_REG
   --------                              
@@ -143,20 +143,20 @@ X 000052     iny
   --------                              
 X (mnemo) iny                           
 ----------------------------------------
-X 000053     bne print_l1
+. 000053     bne print_l1
   --------                              
 X (mnemo) bne                           
-X (variable) print_l1                   print_l1         0x0214
+. (variable) print_l1                   print_l1         ------
 ----------------------------------------
-X 000055 print_out
-X (variable) print_out                  print_out        0x0220
+. 000055 print_out
+. (variable) print_out                  print_out        ------
 ----------------------------------------
 X 000056     rts
   --------                              
 X (mnemo) rts                           
 ----------------------------------------
-X 000058 print_nibble
-X (variable) print_nibble               print_nibble     0x0221
+. 000058 print_nibble
+. (variable) print_nibble               print_nibble     ------
 ----------------------------------------
 . 000059     phx
   --------                              
@@ -174,7 +174,7 @@ X (mnemo) tax
 . 000062     lda hextab, x
   --------                              
 X (mnemo) lda                           
-X (variable) hextab                     hextab           0x0289
+. (variable) hextab                     hextab           ------
 . (keyword) ,                           
 . (keyword) x                           
 ----------------------------------------
@@ -187,8 +187,8 @@ X 000064     rts
   --------                              
 X (mnemo) rts                           
 ----------------------------------------
-X 000066 print_byte
-X (variable) print_byte                 print_byte       0x022b
+. 000066 print_byte
+. (variable) print_byte                 print_byte       ------
 ----------------------------------------
 X 000067     pha
   --------                              
@@ -210,22 +210,22 @@ X 000071     lsr a
   --------                              
 X (mnemo) lsr                           
 ----------------------------------------
-X 000072     jsr print_nibble
+. 000072     jsr print_nibble
   --------                              
 X (mnemo) jsr                           
-X (variable) print_nibble               print_nibble     0x0221
+. (variable) print_nibble               print_nibble     ------
 ----------------------------------------
 X 000073     pla
   --------                              
 X (mnemo) pla                           
 ----------------------------------------
-X 000074     jmp print_nibble
+. 000074     jmp print_nibble
   --------                              
 X (mnemo) jmp                           
-X (variable) print_nibble               print_nibble     0x0221
+. (variable) print_nibble               print_nibble     ------
 ----------------------------------------
-X 000076 print_word
-X (variable) print_word                 print_word       0x0237
+. 000076 print_word
+. (variable) print_word                 print_word       ------
 ----------------------------------------
 X 000077     pha
   --------                              
@@ -235,22 +235,22 @@ X 000078     tax
   --------                              
 X (mnemo) tax                           
 ----------------------------------------
-X 000079     jsr print_byte
+. 000079     jsr print_byte
   --------                              
 X (mnemo) jsr                           
-X (variable) print_byte                 print_byte       0x022b
+. (variable) print_byte                 print_byte       ------
 ----------------------------------------
 X 000080     pla
   --------                              
 X (mnemo) pla                           
 ----------------------------------------
-X 000081     jmp print_byte
+. 000081     jmp print_byte
   --------                              
 X (mnemo) jmp                           
-X (variable) print_byte                 print_byte       0x022b
+. (variable) print_byte                 print_byte       ------
 ----------------------------------------
-X 000085 start
-X (variable) start                      start            0x0240
+. 000085 start
+. (variable) start                      start            ------
 ----------------------------------------
 . 000087     value = $1234
   --------                              
@@ -270,186 +270,186 @@ X (mnemo) lda
 . (keyword) >                           
 . (variable) value                      value            ------
 ----------------------------------------
-X 000090     jsr print_word
+. 000090     jsr print_word
   --------                              
 X (mnemo) jsr                           
-X (variable) print_word                 print_word       0x0237
+. (variable) print_word                 print_word       ------
 ----------------------------------------
-X 000091 loop
-X (variable) loop                       loop             0x0247
+. 000091 loop
+. (variable) loop                       loop             ------
 ----------------------------------------
-X 000092     jmp loop
+. 000092     jmp loop
   --------                              
 X (mnemo) jmp                           
-X (variable) loop                       loop             0x0247
+. (variable) loop                       loop             ------
 ----------------------------------------
 . 000096     ldx #<splash1
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) splash1                    splash1          0x0289
+. (variable) splash1                    splash1          ------
 ----------------------------------------
 . 000097     ldy #>splash1
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) splash1                    splash1          0x0289
+. (variable) splash1                    splash1          ------
 ----------------------------------------
-X 000098     jsr print
+. 000098     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000101     ldx #<splash2
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) splash2                    splash2          0x0289
+. (variable) splash2                    splash2          ------
 ----------------------------------------
 . 000102     ldy #>splash2
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) splash2                    splash2          0x0289
+. (variable) splash2                    splash2          ------
 ----------------------------------------
-X 000103     jsr print
+. 000103     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000106     ldx #<main
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) main                       main             0x0200
+. (variable) main                       main             ------
 ----------------------------------------
 . 000107     ldy #>main
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) main                       main             0x0200
+. (variable) main                       main             ------
 ----------------------------------------
-X 000108     jsr print
+. 000108     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000111     ldx #<start_mes
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) start_mes                  start_mes        0x0289
+. (variable) start_mes                  start_mes        ------
 ----------------------------------------
 . 000112     lda #>start_mes
   --------                              
 X (mnemo) lda                           
 . (keyword) >                           
-X (variable) start_mes                  start_mes        0x0289
+. (variable) start_mes                  start_mes        ------
 ----------------------------------------
-X 000113     jsr print_word
+. 000113     jsr print_word
   --------                              
 X (mnemo) jsr                           
-X (variable) print_word                 print_word       0x0237
+. (variable) print_word                 print_word       ------
 ----------------------------------------
 . 000116     ldx #<stop
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) stop                       stop             0x0274
+. (variable) stop                       stop             ------
 ----------------------------------------
 . 000117     ldy #>stop
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) stop                       stop             0x0274
+. (variable) stop                       stop             ------
 ----------------------------------------
-X 000118     jsr print
+. 000118     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
 . 000121     ldx #<stop_mes
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) stop_mes                   stop_mes         0x0289
+. (variable) stop_mes                   stop_mes         ------
 ----------------------------------------
 . 000122     lda #>stop_mes
   --------                              
 X (mnemo) lda                           
 . (keyword) >                           
-X (variable) stop_mes                   stop_mes         0x0289
+. (variable) stop_mes                   stop_mes         ------
 ----------------------------------------
-X 000123     jsr print_word
+. 000123     jsr print_word
   --------                              
 X (mnemo) jsr                           
-X (variable) print_word                 print_word       0x0237
+. (variable) print_word                 print_word       ------
 ----------------------------------------
-X 000125 stop
-X (variable) stop                       stop             0x0274
+. 000125 stop
+. (variable) stop                       stop             ------
 ----------------------------------------
 X 000126     brk
   --------                              
 X (mnemo) brk                           
 ----------------------------------------
-X 000128 irq
-X (variable) irq                        irq              0x0275
+. 000128 irq
+. (variable) irq                        irq              ------
 ----------------------------------------
 . 000130     ldx #<irq_mes
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) irq_mes                    irq_mes          0x0289
+. (variable) irq_mes                    irq_mes          ------
 ----------------------------------------
 . 000131     ldy #>irq_mes
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) irq_mes                    irq_mes          0x0289
+. (variable) irq_mes                    irq_mes          ------
 ----------------------------------------
-X 000132     jsr print
+. 000132     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
-X 000133 irq_loop
-X (variable) irq_loop                   irq_loop         0x027c
+. 000133 irq_loop
+. (variable) irq_loop                   irq_loop         ------
 ----------------------------------------
-X 000134     jmp irq_loop
+. 000134     jmp irq_loop
   --------                              
 X (mnemo) jmp                           
-X (variable) irq_loop                   irq_loop         0x027c
+. (variable) irq_loop                   irq_loop         ------
 ----------------------------------------
-X 000136 nmi
-X (variable) nmi                        nmi              0x027f
+. 000136 nmi
+. (variable) nmi                        nmi              ------
 ----------------------------------------
 . 000138     ldx #<nmi_mes
   --------                              
 X (mnemo) ldx                           
 . (keyword) <                           
-X (variable) nmi_mes                    nmi_mes          0x0289
+. (variable) nmi_mes                    nmi_mes          ------
 ----------------------------------------
 . 000139     ldy #>nmi_mes
   --------                              
 X (mnemo) ldy                           
 . (keyword) >                           
-X (variable) nmi_mes                    nmi_mes          0x0289
+. (variable) nmi_mes                    nmi_mes          ------
 ----------------------------------------
-X 000140     jsr print
+. 000140     jsr print
   --------                              
 X (mnemo) jsr                           
-X (variable) print                      print            0x020c
+. (variable) print                      print            ------
 ----------------------------------------
-X 000141 nmi_loop
-X (variable) nmi_loop                   nmi_loop         0x0286
+. 000141 nmi_loop
+. (variable) nmi_loop                   nmi_loop         ------
 ----------------------------------------
-X 000142     jmp nmi_loop
+. 000142     jmp nmi_loop
   --------                              
 X (mnemo) jmp                           
-X (variable) nmi_loop                   nmi_loop         0x0286
+. (variable) nmi_loop                   nmi_loop         ------
 ----------------------------------------
-X 000144 splash1 ; .string "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
-X (variable) splash1                    splash1          0x0289
+. 000144 splash1 ; .string "\"VOSC6502\" (Virtual Old School Computer with a 6502 processor)\n"
+. (variable) splash1                    splash1          ------
 ----------------------------------------
 . 000145     .byte $22, $56, $4f, $53, $43, $36, $35
   --------                              
@@ -609,8 +609,8 @@ X (variable) $0a                        $0a              0x000a
 . (keyword) .byte                       
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000156 splash2 ; .string "version 0.99 -------------------------- MMXX - Pierre Faller\n"
-X (variable) splash2                    splash2          0x0289
+. 000156 splash2 ; .string "version 0.99 -------------------------- MMXX - Pierre Faller\n"
+. (variable) splash2                    splash2          ------
 ----------------------------------------
 . 000157     .byte $76, $65, $72, $73, $69, $6f, $6e
   --------                              
@@ -763,8 +763,8 @@ X (variable) $0a                        $0a              0x000a
 . (keyword) ,                           
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000167 start_mes ; .string "free rom "
-X (variable) start_mes                  start_mes        0x0289
+. 000167 start_mes ; .string "free rom "
+. (variable) start_mes                  start_mes        ------
 ----------------------------------------
 . 000168     .byte $66, $72, $65, $65, $20, $72, $6f
   --------                              
@@ -792,8 +792,8 @@ X (variable) $20                        $20              0x0020
 . (keyword) ,                           
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000171 stop_mes ; .string " bytes\n"
-X (variable) stop_mes                   stop_mes         0x0289
+. 000171 stop_mes ; .string " bytes\n"
+. (variable) stop_mes                   stop_mes         ------
 ----------------------------------------
 . 000172     .byte $20, $62, $79, $74, $65, $73, $0a
   --------                              
@@ -817,8 +817,8 @@ X (variable) $0a                        $0a              0x000a
 . (keyword) .byte                       
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000175 nmi_mes ; .string " NMI occured\n"
-X (variable) nmi_mes                    nmi_mes          0x0289
+. 000175 nmi_mes ; .string " NMI occured\n"
+. (variable) nmi_mes                    nmi_mes          ------
 ----------------------------------------
 . 000176     .byte $20, $4e, $4d, $49, $20, $6f, $63
   --------                              
@@ -854,8 +854,8 @@ X (variable) $0a                        $0a              0x000a
 . (keyword) ,                           
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000179 irq_mes ; .string " IRQ occured\n"
-X (variable) irq_mes                    irq_mes          0x0289
+. 000179 irq_mes ; .string " IRQ occured\n"
+. (variable) irq_mes                    irq_mes          ------
 ----------------------------------------
 . 000180     .byte $20, $49, $52, $51, $20, $6f, $63
   --------                              
@@ -891,8 +891,8 @@ X (variable) $0a                        $0a              0x000a
 . (keyword) ,                           
 X (variable) $00                        $00              0x0000
 ----------------------------------------
-X 000183 hextab ; .ch_array "0123456789ABCDEF"
-X (variable) hextab                     hextab           0x0289
+. 000183 hextab ; .ch_array "0123456789ABCDEF"
+. (variable) hextab                     hextab           ------
 ----------------------------------------
 . 000184     .byte $30, $31, $32, $33, $34, $35, $36
   --------                              
@@ -935,6 +935,6 @@ X (variable) $45                        $45              0x0045
 . (keyword) ,                           
 X (variable) $46                        $46              0x0046
 ----------------------------------------
-X 000188 source_end
-X (variable) source_end                 source_end       0x0289
+. 000188 source_end
+. (variable) source_end                 source_end       ------
 ----------------------------------------
