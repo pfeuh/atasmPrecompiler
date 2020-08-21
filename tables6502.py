@@ -26,7 +26,7 @@ OPCODES = (
     'cpx', 'sbc', 'inc', 'inx', 'nop', 'beq', 'sed', 
     )
 
-MNEMOS = (
+OPCODE_VALUES = (
     'brk', 'ora', None , None , None , 'ora', 'asl', None , 'php', 'ora', 'asl', None , None , 'ora', 'asl', None , 
     'bpl', 'ora', None , None , None , 'ora', 'asl', None , 'clc', 'ora', None , None , None , 'ora', 'asl', None , 
     'jsr', 'and', None , None , 'bit', 'and', 'rol', None , 'plp', 'and', 'rol', None , 'bit', 'and', 'rol', None , 

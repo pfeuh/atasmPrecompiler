@@ -11,8 +11,17 @@ def writeln(text):
     write(text)
     write("\n")
 
-prog = ['', 'lda', '#', '3']
+result = (0x1234, 0x2345, 0x3456)
 
-writeln(prog)
-del prog[2]
-writeln(prog)
+tmp_lst = []
+for value in result:
+    tmp_lst.append(value & 255)
+    tmp_lst.append(value /256)
+
+print tmp_lst
+for byte in tmp_lst:
+    print "%02x"%byte
+
+print tuple(tmp_lst)
+print tuple([-1])
+    
