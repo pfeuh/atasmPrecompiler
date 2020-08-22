@@ -227,14 +227,16 @@ def commentLine(text, line):
                 otext += car
     return otext
 
-def getOpcodeValue(opcode, mode, line):
+def getOpcodeValue(mnemo, mode, line, strict=True):
     for value, item in enumerate(OPCODE_VALUES):
-        if item == opcode:
+        if item == mnemo:
             if MODES[value] == mode:
                 return value
     # no opcode with this mode
-    printError("illegal opcode '%s' (%s)"%(opcode, mode), line)
-    return None
+    if strict:
+        printError("illegal mnemonic %s %s"%(mnemo, mode), line)
+    else:
+        return None
 
 def isString(label):
     if label.startswith(CHAR_QUOTE) and label.endswith(CHAR_QUOTE):
@@ -335,10 +337,9 @@ class WORD():
     def isSolved(self):
         if self.__wtype in (TYPE_VARIABLE, TYPE_OPCODE):
             return self.__value != None
-        else:
-            if self.__wtype == TYPE_VOID:
-                return True
-            return False
+        elif self.__wtype in (TYPE_VOID,):
+            return True
+        return False
 
     def getLabel(self):
         return self.__text
@@ -434,7 +435,14 @@ class ASM_LINE():
         self.__text = text
         self.__solved = False
         self.__bytes = []
+        self.__pc = None
         self.__words = []
+
+    def setPC(self, prog_count):
+        self.__pc= prog_count
+
+    def getPC(self):
+        return self.__pc
 
     def addWord(self, word):
         if word in (None, str):
@@ -450,6 +458,9 @@ class ASM_LINE():
     def getWords(self):
         return self.__words
 
+    def setWords(self, words):
+        self.__words = words
+
     def getText(self):
         return self.__text
 
@@ -458,6 +469,9 @@ class ASM_LINE():
     
     def getBytes(self):
         return self.__bytes
+    
+    def setBytes(self, bytes):
+        self.__bytes = bytes
     
     def getLine(self):
         return self.__line
@@ -523,11 +537,14 @@ class ASM_FILE():
 
         # let's go!
         self.createAsmLines(self.__fname)
-        for x in range(10):
-            self.assemble()
+        #~ for x in range(10):
+            #~ self.assemble()
         #~ self.debugStr()
         #~ self.computeOpcodes()
         #~ self.computeAffectations()
+    
+    def getLines(self):
+        return self.__asm_lines
         
     def debugStr(self):
         otext = EMPTY_STR
@@ -605,7 +622,8 @@ class ASM_FILE():
                         else:
                             word = global_word
                 else:
-                    self.__words[label] = word
+                    if word.getType() == TYPE_VARIABLE:
+                        self.__words[label] = word
                 asm_line.addWord(word)
                 
     def assemble(self):
@@ -614,6 +632,8 @@ class ASM_FILE():
         for line in self.__asm_lines:
             if not line.isSolved():
                 self.parseLine(line, pc)
+        if pc.isOK():
+            writeln("assembly successfuly terminated!")
 
     def parseLine(self, line, pc):
         words = line.getWords()
@@ -638,7 +658,10 @@ class ASM_FILE():
                     
         if len(words) >= 3:
             self.computeCommands(line, pc)
-        
+            
+        if len(words) >= 2:
+            self.computeOpcodeData(line, pc)
+
     def computeWordSplitter(self, line, pc):
         info = line.getLine()
         words = line.getWords()
@@ -649,9 +672,12 @@ class ASM_FILE():
                 if index == nb_words - 1:
                     printError("no value after '%s'"%label, info)
                 else:
-                    result = self.solveExpression(words[index+1:], info)
+                    #~ result = self.solveExpression(words[index+1:], info)
+                    result = self.solveExpression([words[index+1]], info)
                     if result != None:
-                        writeln("-> %s"%str(formatData(result, label, word, pc, info)), fp=self.__solver_fp)
+                        result = formatData(result, label, word, pc, info)
+                        writeln("-> %s"%str(result), fp=self.__solver_fp)
+                        line.setWords(words[index+1:] + words[:index+2])
                     else:
                         writeln("-> None", fp=self.__solver_fp)
                     writeln("-"*40, fp=self.__solver_fp)
@@ -662,6 +688,9 @@ class ASM_FILE():
 
         if not word_num:
             # managing variables, first word can only be label
+            if label.endswith(':'):
+                label = label[:-1]
+            
             if labelIsOk(label):
                 word.setType(TYPE_VARIABLE)
             else:
@@ -745,6 +774,9 @@ class ASM_FILE():
         return word
 
     def computeOpcode(self, line, pc):
+        if pc.isOK():
+            line.setPC(pc.get())
+        
         words = line.getWords()
         nb_words = len(words)
         info = line.getLine()
@@ -808,6 +840,7 @@ class ASM_FILE():
                     if words[-2].getLabel().lower() == "x":
                         if words[-3].getLabel() == ",":
                             if words[2].getLabel() == "(":
+                                value = getOpcodeValue(opcode, INDIRECTX, line)
                                 word.set(value)
                                 pc.add(getInstructionSize(value))
                                 del words[2]
@@ -887,6 +920,69 @@ class ASM_FILE():
         if not solved:
             printWarning("unsolved opcode %s"%opcode, line)
 
+    def computeOpcodeData(self, line, pc):
+        if pc.isOK():
+            info = line.getLine()
+            words = line.getWords()
+            if len(words) >= 2:
+                item = words[1]
+                if item.isSolved():
+                    
+                    if item.getType() == TYPE_OPCODE:
+                        opcode = item.get()
+                        mode = MODES[opcode]
+                        mnemo = item.getLabel()
+                        if mode in (IMPLIED, ACCUMULATOR):
+                            line.setBytes((opcode,))
+                            return 
+                        if len(words) == 3:
+                            if words[2].isSolved():
+                                data = words[2].get()
+                                if mode in (ABSOLUTE, ABSOLUTEY,ABSOLUTEX):
+                                    if data < 256:
+                                        #change the mode, use the page zero one
+                                        if mode == ABSOLUTE:
+                                            new_opcode = getOpcodeValue(mnemo, ZEROPAGE, info, strict=False)
+                                            #~ new_opcode = getOpcodeValue(mnemo, ZEROPAGE, info)
+                                            if new_opcode != None:
+                                                item.set(opcode)
+                                                line.setBytes((opcode,data))
+                                            else:
+                                                line.setBytes((opcode,data & 25, data / 256))                                                
+                                        elif mode == ABSOLUTEX:
+                                            opcode = getOpcodeValue(mnemo, ZEROPAGEX, info)
+                                            item.set(opcode)
+                                            line.setBytes((opcode,data))
+                                        elif mode == ABSOLUTEY:
+                                            opcode = getOpcodeValue(mnemo, ZEROPAGEY, info)
+                                            item.set(opcode)
+                                            line.setBytes((opcode,data))
+                                        return
+                                    else:
+                                        #keep the mode, use the absolute one
+                                        if mode == ABSOLUTE:
+                                            line.setBytes((opcode,data & 255, data/ 256))
+                                        elif mode == ABSOLUTEX:
+                                            line.setBytes((opcode,data & 255, data/ 256))
+                                        elif mode == ABSOLUTEY:
+                                            line.setBytes((opcode,data & 255, data/ 256))
+                                        return
+                            
+
+                    
+
+#~ INDIRECTX = 'IndirectX'
+#~ IMMEDIATE = 'Immediate'
+#~ RELATIVE = 'Relative'
+#~ INDIRECTY = 'IndirectY'
+#~ INDIRECT = 'Indirect'
+                
+                
+        
+        
+        
+        
+    
     def computeAffectations(self, line):
         # solve some affectations
         words = line.getWords()
@@ -916,11 +1012,13 @@ class ASM_FILE():
         if label in COMMANDS:
             result = self.solveExpression(words[2:], info)
             if result != None:
-                writeln("-> %s"%str(formatData(result, label, command, pc, info)), fp=self.__solver_fp)
+                bytes = formatData(result, label, command, pc, info)
+                line.setWords(words[:2])
+                #~ writeln("-> %s"%str(bytes), fp=self.__solver_fp)
+                #~ words[1].set(bytes)
             else:
                 writeln("-> None", fp=self.__solver_fp)
             writeln("-"*40, fp=self.__solver_fp)
-                
 
     def solveExpression(self, words, info):
         labels = []
@@ -1004,6 +1102,28 @@ class ASM_FILE():
                 otext += "%-20 %s"%(key, str(item.get())) + CHAR_LF
         return otext
 
+    #~ def desass(self):
+        #~ pc = PROGRAM_COUNTER(self.__org)
+
+        #~ for line in self.__asm_lines:
+            #~ label = ""
+            #~ pointer = "????"
+            #~ word1 = "???"
+            
+            #~ words = line.__words()
+            #~ nb_words = len(words)
+            #~ if nb_words:
+                #~ if words[0].getType() == TYPE_VARIABLE:
+                    #~ label = words[0]. getLabel()
+                    #~ if word[0].isSolved():
+                        #~ pointer = pc.get()
+            #~ if nb_words >= 2:
+                #~ if words[1].getType() == TYPE_OPCODE:
+                    #~ if words[2].getType() == TYPE_VARIABLE:
+                        #~ if words[2].isSolved() == TYPE_VARIABLE:
+                            #~ instruction = desass(words[1].getValue(), words[2].getValue()
+                            #~ writeln(instruction)
+        
     def __str__(self):
         otext = EMPTY_STR
         for asm_line in self.__asm_lines:
@@ -1257,9 +1377,10 @@ if __name__ == "__main__":
     ##################
 
     # let's parse source file and clean it
-    source = ASM_FILE(ap.getArgsDictionary(), solver_fp=open(buildName(ap.get('-ifname'), "solver.asm"), "w") )
+    #~ source = ASM_FILE(ap.getArgsDictionary(), solver_fp=open(buildName(ap.get('-ifname'), "solver.asm"), "w") )
+    source = ASM_FILE(ap.getArgsDictionary())
     
-    #~ source.assemble()
+    source.assemble()
     diskSave(buildName(ap.get('-ifname'), "debug.asm"), source.debugStr())
 
     #~ diskSave(buildName(ap.get('-ifname'), "asm_lines.asm"), source.getCodeText())

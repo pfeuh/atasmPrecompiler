@@ -21,20 +21,20 @@
 
 OPCODES = (
     'brk', 'ora', 'asl', 'php', 'bpl', 'clc', 'jsr', 'and', 'bit', 'rol', 'plp', 'bmi', 'sec', 'rti', 'eor', 'lsr', 
-    'pha', 'jmp', 'bvc', 'cli', 'rts', 'adc', 'ror', 'pla', 'bcs', 'sei', 'sta', 'sty', 'stx', 'dey', 'txa', 'bcc', 
-    'tya', 'txs', 'ldy', 'lda', 'ldx', 'tay', 'tax', 'clv', 'tsx', 'cpy', 'cmp', 'dec', 'iny', 'dex', 'bne', 'cld', 
-    'cpx', 'sbc', 'inc', 'inx', 'nop', 'beq', 'sed', 
+    'pha', 'jmp', 'bvc', 'cli', 'rts', 'adc', 'ror', 'pla', 'bvs', 'sei', 'sta', 'sty', 'stx', 'dey', 'txa', 'bcc', 
+    'tya', 'txs', 'ldy', 'lda', 'ldx', 'tay', 'tax', 'bcs', 'clv', 'tsx', 'cpy', 'cmp', 'dec', 'iny', 'dex', 'bne', 
+    'cld', 'cpx', 'sbc', 'inc', 'inx', 'nop', 'beq', 'sed', 
     )
 
 OPCODE_VALUES = (
     'brk', 'ora', None , None , None , 'ora', 'asl', None , 'php', 'ora', 'asl', None , None , 'ora', 'asl', None , 
     'bpl', 'ora', None , None , None , 'ora', 'asl', None , 'clc', 'ora', None , None , None , 'ora', 'asl', None , 
     'jsr', 'and', None , None , 'bit', 'and', 'rol', None , 'plp', 'and', 'rol', None , 'bit', 'and', 'rol', None , 
-    'bmi', 'and', None , None , None , 'and', 'rol', None , 'sec', 'and', None , None , None , 'ora', 'asl', None , 
+    'bmi', 'and', None , None , None , 'and', 'rol', None , 'sec', 'and', None , None , None , 'and', 'rol', None , 
     'rti', 'eor', None , None , None , 'eor', 'lsr', None , 'pha', 'eor', 'lsr', None , 'jmp', 'eor', 'lsr', None , 
     'bvc', 'eor', None , None , None , 'eor', 'lsr', None , 'cli', 'eor', None , None , None , 'eor', 'lsr', None , 
     'rts', 'adc', None , None , None , 'adc', 'ror', None , 'pla', 'adc', 'ror', None , 'jmp', 'adc', 'ror', None , 
-    'bcs', 'adc', None , None , None , 'adc', 'ror', None , 'sei', 'adc', None , None , None , 'adc', 'ror', None , 
+    'bvs', 'adc', None , None , None , 'adc', 'ror', None , 'sei', 'adc', None , None , None , 'adc', 'ror', None , 
     None , 'sta', None , None , 'sty', 'sta', 'stx', None , 'dey', None , 'txa', None , 'sty', 'sta', 'stx', None , 
     'bcc', 'sta', None , None , 'sty', 'sta', 'stx', None , 'tya', 'sta', 'txs', None , None , 'sta', None , None , 
     'ldy', 'lda', 'ldx', None , 'ldy', 'lda', 'ldx', None , 'tay', 'lda', 'tax', None , 'ldy', 'lda', 'ldx', None , 
@@ -127,7 +127,7 @@ MODES = (
     )
 
 RELATIVE_OPCODES = (
-    'bpl', 'bmi', 'bvc', 'bcs', 'bcc', 'bcs', 'bne', 'beq', 
+    'bpl', 'bmi', 'bvc', 'bvs', 'bcc', 'bcs', 'bne', 'beq', 
     )
 
 IMPLIED_OPCODES = (
