@@ -309,6 +309,13 @@ def compareStrings(s1, s2):
         writeln("%s '%s' - '%s' %s %s"%(word1, word2, word4, word3, pointer))
             
 
+def compareFiles(fname1, fname2):
+    with open(fname1, "rb") as fp:
+        s1 = fp.read(-1)
+    with open(fname2, "rb") as fp:
+        s2 = fp.read(-1)
+    compareStrings(s1, s2)
+    
 def write(text, fp=sys.stdout):
     if fp != None:
         fp.write(str(text))
@@ -348,6 +355,60 @@ def readAtariFile(fname):
                     return first, bytes
                 else:
                     raise Exception("unexpected end of file %s!"%fname)
+
+def getArgumentParserParams(asm, args):
+    ap = asm.ARGUMENTS()
+    asm.ap =  ap
+    ap.addArgument(asm.ARGUMENT('-ifname', str, check_minus=True))  # input file to assemble
+    ap.addArgument(asm.ARGUMENT('-debug'))   # useful for programer only
+    ap.addArgument(asm.ARGUMENT('-nb_cols', int))  # number of columns of the bytes generator
+    ap.addArgument(asm.ARGUMENT('-org', int, check_minus=True))  # start address of code segment
+    ap.parse(args)
+    return ap.getArgsDictionary()
+
+
+def saveBytes(fname, bytes):
+    with open(fname, "wb") as fp:
+        for byte in bytes:
+            fp.write(chr(byte))
+
+def getLineWord(source, line_num, item, strict=False):
+    lines = source.getAsmLines()
+    if line_num < len(lines):
+        line = lines[line_num]
+        words = line.getWords()
+        if type(item) == int:
+            if item < len(words):
+                word = words[item]
+                return word
+            else:
+                if strict:
+                    raise Exception("bad word_num:%d line has %d words"%(item, len(lines)))
+                else:
+                    return None
+        elif type(item) == str:
+            for word in words:
+                if word.getLabel() == item:
+                    return word
+            if strict:
+                raise Exception("word with label '%s' not found"%(item))
+            else:
+                return None
+    else:
+        if strict:
+            raise Exception("bad line_num:%d source has %d lines"%(line_num, len(lines)))
+        else:
+            return None
+
+def getGlobalWord(source, word_label, strict=False):
+        return source.getWord(word_label, strict=strict)
+
+def getException(hook, *args, **kwds):
+    try:
+        hook(*args, **kwds)
+        return False
+    except:
+        return True
 
 class BUFFER():
     def __init__(self,bytes):
@@ -487,16 +548,9 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         fname = "utest/test_opcodes.asm"
-        ap = asm.ARGUMENTS()
-        asm.ap =  ap
-        ap.addArgument(asm.ARGUMENT('-ifname', str, check_minus=True))  # input file to assemble
-        ap.addArgument(asm.ARGUMENT('-debug'))   # useful for programer only
-        ap.addArgument(asm.ARGUMENT('-nb_cols', int))  # number of columns of the bytes generator
-        ap.addArgument(asm.ARGUMENT('-org', int, check_minus=True))  # start address of code segment
-        #~ ap.parse(('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug'))
-        ap.parse(('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600'))
-        params = ap.getArgsDictionary()
-        # makeFile(fname, ('start nop',' nop',' nop',))
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+
         source = asm.ASM_FILE(params)
         source.assemble()
         
@@ -509,22 +563,31 @@ if __name__ == "__main__":
         buffer = BUFFER(ref_bytes)
 
         prog_bytes = []
-        for line in source.getLines():
+        for line_num, line in enumerate(source.getAsmLines()):
+            otext = "%06d"%line_num
             bytes = line.getBytes()
             for byte in bytes:
+                otext += " %02x"%byte
                 prog_bytes.append(byte)
+            while len(otext) < 24:
+                otext += " "
+            otext += "      %s"%line.getText()
+            writeln(otext)
+        saveBytes("utest/prog_bytes.bin", prog_bytes)
                 
         # let's compare
-            for line in source.getLines():
-                bytes = line.getBytes()
-                if len(bytes):
-                    write("%-20s   "%str(line.getText()))
-                    for byte in bytes:
-                        ref_byte = buffer.get()
-                        write("%02x:%02x - "%(ref_byte, byte))
-                        if byte != ref_byte:
-                            asm.printError("difference with reference file!", line.getLine())
-                    writeln("")
+        for line in source.getAsmLines():
+            bytes = line.getBytes()
+            if len(bytes):
+                write("%-20s   "%str(line.getText()))
+                for byte in bytes:
+                    ref_byte = buffer.get()
+                    write("%02x:%02x - "%(ref_byte, byte))
+                    if byte != ref_byte:
+                        asm.printError("difference with reference file!", line.getLine())
+                writeln("")
+            else:
+                pass
 
     def test_tables ():
         import tables6502
@@ -551,8 +614,96 @@ if __name__ == "__main__":
             if (ref_opcode != ut_opcode) or (ref_mode != ut_mode):
              raise Exception("Difference: %0X %s %-12s %s %-12s"%(x, ref_opcode, ref_mode, ut_opcode, ut_mode))
 
-    test_tables()
-    test_precompiler()
-    test_compiler()
+    def test_getOpcodeValue():
+        # with a mnemonic and an addressing mode, getOpcodeValue return the matching opcode
+        
+        import assembler6502 as asm
+        
+        fname = "utest/test_opcodes.asm"
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+ 
+        ref_table = getRefTable()
+        info = asm.SOURCE_LINE("None", "utest", 0)
+        
+        for x in range(256):
+            line = ref_table[x]
+            ref_opcode = int("0x%s"%line[0], 16)
+            if len(line) == 3:
+                # opcode exists for the 6502
+                ref_mnemo =  line[1].lower()
+                ref_mode =  line[2].lower()
+                mnemo = asm.OPCODE_VALUES[x]
+                mode = asm.MODES[x]
+                opcode = asm.getOpcodeValue(mnemo, mode, info, strict=False)
+                if opcode != ref_opcode:
+                    raise Exception("\nreference      : %s %s %02x\ngetOpcodeValue : %s %s %s"%(ref_mnemo, ref_mode, ref_opcode, mnemo, mode, opcode))
+            else:
+                # opcode doesn't exist for the 6502
+                pass
+        
+
+    def test_createAsmLines():
+        import assembler6502 as asm
+        
+        fname = "utest/empty.asm"
+        makeFile(fname, [])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        source = asm.ASM_FILE(params) 
+        assert len(source.getAsmLines()) == 0
+        assert len(source.getSourceLines()) == 0
+        assert len(source.getWords()) == 0
+        
+        word1 = source.addWord(asm.WORD("toto", wtype=asm.TYPE_VARIABLE, value=133), strict=True)
+        assert len(source.getWords()) == 1
+        assert word1.get() == 133
+        assert word1.getType() == asm.TYPE_VARIABLE
+        
+        word2 = source.addWord(asm.WORD("titi", wtype=asm.TYPE_VARIABLE, value=None), strict=True)
+        assert len(source.getWords()) == 2
+        
+        word3 = source.addWord(asm.WORD("toto", wtype=asm.TYPE_VARIABLE, value=None), strict=True)
+        assert len(source.getWords()) == 2
+        
+        word4 = asm.WORD("dummy", wtype=asm.TYPE_OPCODE, value=None)
+        assert len(source.getWords()) == 2
+        
+        assert getException(source.addWord, word4, strict=True) 
+        assert len(source.getWords()) == 2
+        word4 = source.addWord(asm.WORD("dummy", wtype=asm.TYPE_OPCODE, value=None), strict=False)
+        assert len(source.getWords()) == 2
+        
+        assert source.getWord("toto").get() == 133
+
+        source.getWord("toto").set(246)
+        assert source.getWord("toto").get() == 246
+        assert word1.get() == 246
+        assert word3.get() == 246
+        assert word2.get() == None
+        
+        word1.set(369)
+        assert source.getWord("toto").get() == 369
+        assert word1.get() == 369
+        assert word3.get() == 369
+        assert word2.get() == None
+        
+        
+        fname = "utest/test_opcodes.asm"
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        source = asm.ASM_FILE(params) 
+        source.assemble()
+        print source.getReport()
+
+    #~ test_precompiler()
+    #~ test_tables()
+    #~ test_getOpcodeValue()
+    test_createAsmLines()
+    #~ test_compiler()
     
     sys.stdout.write("A L L   T E S T S   P A S S E D !\n")

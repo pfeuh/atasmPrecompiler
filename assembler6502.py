@@ -60,7 +60,7 @@ if 1:
     CMD_ORG = '*'
     COMMANDS = (CMD_BYTE, CMD_WORD, CMD_DBYTE, CMD_STRING, CMD_CH_ARRAY, CMD_DS, CMD_ORG)
 
-    REGISTERS = ('x', 'y', 'X', 'Y')
+    REGISTERS = ('x', 'y', 'X', 'Y', 'a', 'A')
     KEYWORDS = COMMANDS + PONCTUATION + REGISTERS
 
 def write(text, fp=sys.stdout):
@@ -329,9 +329,7 @@ class WORD():
     def __init__(self, label, wtype=None, value=None):
         assert type(label) == str
         self.__text = label
-        self.__wtype = None
-        if value != None and wtype != TYPE_VARIABLE:
-            raise Exception("unexpected value '%s' for type %s"%(value, TYPE_NAME[wtype]))
+        self.__wtype = wtype
         self.__value = value
 
     def isSolved(self):
@@ -357,10 +355,7 @@ class WORD():
         return self.__value
 
     def set(self, value):
-        if self.__value == None:
-            self.__value = value
-        #~ else:
-            #~ raise Exception("value %s already set (%s) for word %s"%(value, self.__value, self.getLabel()))
+        self.__value = value
 
     def isVariable(self):
         return self.__wtype == TYPE_VARIABLE
@@ -543,7 +538,10 @@ class ASM_FILE():
         #~ self.computeOpcodes()
         #~ self.computeAffectations()
     
-    def getLines(self):
+    def getSourceLines(self):
+        return self.__source_lines
+        
+    def getAsmLines(self):
         return self.__asm_lines
         
     def debugStr(self):
@@ -564,23 +562,73 @@ class ASM_FILE():
         #~ sys.exit(0)
         
         otext += self.getStatText() + CHAR_SPACE
-        for line in self.__asm_lines:
-            solved_text = "."
-            if line.isSolved():
-                solved_text = "X"
-            otext += "%06d %s "%(line.getLine().getNum(), solved_text)
-            for word in line.getWords():
-                otext += word.debugStr() + CHAR_SPACE
-            otext += CHAR_LF
-        otext += self.getWordsStr()
+        #~ for line in self.__asm_lines:
+            #~ solved_text = "."
+            #~ if line.isSolved():
+                #~ solved_text = "X"
+            #~ otext += "%06d %s "%(line.getLine().getNum(), solved_text)
+            #~ for word in line.getWords():
+                #~ otext += word.debugStr() + CHAR_SPACE
+            #~ otext += CHAR_LF
+        #~ otext += self.getWordsStr()
         return otext
 
-    def getWord(self, label):
+    def getWord(self, label, strict=False):
         if label in self.__words.keys():
             return self.__words[label]
+        if strict:
+            raise Exception("global word '%s' not found!"%label)
             
     def getWords(self):
         return self.__words
+        
+    def decodeValue(self, chars):
+        if chars.startswith(CHAR_DOLLAR):
+            # vintage assemblers use $ instead of 0x for hex values
+            chars = "0x" + chars[1:]
+        elif chars.startswith(CHAR_TILD):
+            # vintage assemblers use ~ to prefix a binary value
+            chars = "0b" + chars[1:]
+        elif chars.startswith(CHAR_SINGLE_QUOTE):
+            # vintage assemblers use ' to prefix a single character
+            if len(chars) != 2:
+                printError("syntax on word '%s'"%chars, line)
+            else:
+                chars = "0x%04x"%ord(chars[1])
+        elif chars[0] in "0123456789-":
+            # nothing to adjust
+            pass
+        else:
+            # it is not a value
+            return None
+    
+        # let's test numerical values
+        success = False
+        try:
+            return eval(chars)
+            success = True
+        except:
+            return None
+        
+    def addWord(self, word, strict=False):
+        # each variable has to be global,
+        # so if it's solved somewhere, it's solved evereywhere
+        if word.getType() == TYPE_VARIABLE:
+            label = word.getLabel()
+            wtype = word.getType()
+            value = word.get()
+            if label in self.__words.keys():
+                global_word = self.__words[label]
+                if value != None:
+                    global_word.set(value)
+            else:
+                self.__words[label] = word
+            return self.__words[label]
+        else:
+            if strict:
+                raise Exception("type mismatch! attempting to add word '%s' with type %s!"%(word.getLabel(), TYPE_NAME[word.getType()]))
+            else:
+                return None
 
     def getArgument(self, pname):
         #getting an argument from commandline
@@ -593,7 +641,7 @@ class ASM_FILE():
         # let's slice the line in a list of words
         with open(fname, "r") as fp:
             lines = getFileLines(fp)
-        # building minimal source file (comments are removed)
+        # building minimal source file (empty lines and comments are removed)
         for num, text in enumerate(lines):
             line = SOURCE_LINE(fname, text, num + 1)
             self.__source_lines.append(line)
@@ -604,10 +652,17 @@ class ASM_FILE():
             else:
                 # line is empty, no need to store it
                 continue
+            self.splitLine(asm_line)
+
+    def splitLine(self, line):
 
             # line is created, let's add its words
-            labels = [label for label in extractLabelsFromLine(asm_line.getText(), line)]
+            labels = [label for label in extractLabelsFromLine(line.getText(), line)]
             for position, label in enumerate(labels):
+                if not position:
+                    if label.endswith(":"):
+                        label = label[:-1]
+
                 word = self.InitializeWord(label, position, line)
                 if label in self.__words.keys():
                     # let's check a little list...
@@ -624,7 +679,7 @@ class ASM_FILE():
                 else:
                     if word.getType() == TYPE_VARIABLE:
                         self.__words[label] = word
-                asm_line.addWord(word)
+                line.addWord(word)
                 
     def assemble(self):
         pc = PROGRAM_COUNTER(self.__org)
@@ -686,91 +741,43 @@ class ASM_FILE():
         word = WORD(label)
         test_value = False
 
-        if not word_num:
-            # managing variables, first word can only be label
-            if label.endswith(':'):
-                label = label[:-1]
+        if word_num == 0:
+            # first word of a line can only be a label
             
             if labelIsOk(label):
-                word.setType(TYPE_VARIABLE)
+                return self.addWord(WORD(label, TYPE_VARIABLE))
             else:
                 if label != EMPTY_STR:
                     printError("Unexpected word '%s'"%label, line)
                 else:
                     word.setType(TYPE_VOID)
                     word.set("---")
+
         elif word_num == 1:
-            #managing variable
+            # 2nd word of a line can be a mnemonic, a variable or a command
             if labelIsOk(label):
-                word.setType(TYPE_VARIABLE)
-            # managing opcodes
+                return self.addWord(WORD(label, TYPE_VARIABLE))
             elif label.lower() in OPCODES:
                 # insensitive case allowed
-                word.setType(TYPE_OPCODE)
-            #managing commands
+                return WORD(label, TYPE_OPCODE)
             elif label in COMMANDS:
-                word.setType(TYPE_COMMAND)
-            #~ elif label in REGISTERS:
-                #~ word.setType(TYPE_KEYWORD)
+                return WORD(label, TYPE_COMMAND)
             else:
                 printError("Unexpected word '%s'"%label, line)
-        elif word_num >= 2:
-            #managing variables
-            if labelIsOk(word.getLabel()):
-                word.setType(TYPE_VARIABLE)
-            #managing commands
-            elif label in COMMANDS:
-                printError("Unexpected word '%s'"%label, line)
-            elif label in KEYWORDS:
-                word.setType(TYPE_KEYWORD)
-            elif label in PONCTUATION:
-                word.setType(TYPE_PONCTUATION)
-            #managing values
-            elif label.startswith(CHAR_DOLLAR):
-                # vintage assemblers use $ instead of 0x for hex values
-                label = "0x" + label[1:]
-                test_value = True
-            elif label.startswith(CHAR_TILD):
-                # vintage assemblers use ~ to prefix a binary value
-                label = "0b" + label[1:]
-                test_value = True
-            elif label.startswith(CHAR_SINGLE_QUOTE):
-                # vintage assemblers use ' to prefix a single character
-                if len(label) != 2:
-                    printError("syntax on word '%s'"%label, line)
-                else:
-                    label = "0x%04x"%ord(label[1])
-                    test_value = True
-                    #~ word.set(value)
-            elif label[0] in "0123456789-":
-                # decimal value
-                test_value = True
-            elif isString(label):
-                word.setType(TYPE_VARIABLE)
-                # no setting, it will come later
                 
-            if test_value:
-                # let's test numerical values
-                success = False
-                try:
-                    value = eval(label)
-                    success = True
-                except:
-                    pass
-                if success:
-                    if type(value) == int:
-                        word.setType(TYPE_VARIABLE)
-                        #~ word.set(value)
-                        word.set(value)
-                    else:
-                        printError("unknown type for '%s'"%word, line)
-                else:
-                    printError("syntax on word '%s'"%word, line)
-            
-        # did we missed something?
-        if word.getType() == None:
-            printError("Unexpected word '%s'"%label, line)
-            
+        elif word_num >= 2:
+            # from 3rd position, words can be everything except opcode or command
+            if labelIsOk(word.getLabel()):
+                return self.addWord(WORD(label, TYPE_VARIABLE))
+            elif label in PONCTUATION:
+                return WORD(label, TYPE_PONCTUATION)
+            elif label in REGISTERS:
+                return WORD(label, REGISTERS)
+            elif self.decodeValue(label) != None:
+                return self.addWord(WORD(label, TYPE_VARIABLE, self.decodeValue(label)))
+            elif isString(label):
+                return WORD(label, TYPE_STRING, label)
+
         return word
 
     def computeOpcode(self, line, pc):
@@ -780,6 +787,7 @@ class ASM_FILE():
         words = line.getWords()
         nb_words = len(words)
         info = line.getLine()
+        
         if nb_words < 2:
             printLink("", info)
             raise Exception("unexpected end of line testing opcode\n")
@@ -906,19 +914,27 @@ class ASM_FILE():
 
 # mode Absolute & Zero Page - choice will be done when size of operand will be known
         if not solved:
-            if nb_words >= 2:
-                found_bad = False
-                for unknown_word in words[2:]:
-                    if unknown_word.getLabel().lower in (',', 'x', 'y', 'a'):
-                        found_bad = True
-                        break
-                if not found_bad:
-                    value = getOpcodeValue(opcode, ABSOLUTE, line)
-                    word.set(value)
-                    pc.add(getInstructionSize(value))
-                    solved = True
+            value = getOpcodeValue(opcode, ABSOLUTE, line)
+            word.set(value)
+            pc.add(getInstructionSize(value))
+            solved = True
         if not solved:
             printWarning("unsolved opcode %s"%opcode, line)
+
+        #~ if not solved:
+            #~ if nb_words >= 2:
+                #~ found_bad = False
+                #~ for unknown_word in words[2:]:
+                    #~ if unknown_word.getLabel().lower in (',', 'x', 'y', 'a'):
+                        #~ found_bad = True
+                        #~ break
+                #~ if not found_bad:
+                    #~ value = getOpcodeValue(opcode, ABSOLUTE, line)
+                    #~ word.set(value)
+                    #~ pc.add(getInstructionSize(value))
+                    #~ solved = True
+        #~ if not solved:
+            #~ printWarning("unsolved opcode %s"%opcode, line)
 
     def computeOpcodeData(self, line, pc):
         if pc.isOK():
@@ -1079,18 +1095,6 @@ class ASM_FILE():
             percent = (float(solved) / float(items)) * 100.0
             return "%6.2f%% assembled (%d/%d)"%(percent, solved, items)
 
-    def XX__getStatText(self):
-        items = 0
-        solved = 0
-        for line in self.__asm_lines:
-            for item in line.getWords():
-                if item.getType() != TYPE_VOID:
-                    items += 1
-                    if item.isSolved():
-                        solved += 1
-        percent = (float(solved) / float(items)) * 100.0
-        return "%6.2f%% assembled (%d/%d)"%(percent, solved, items)
-
     def getLabelsText(self):
         otext = EMPTY_STR
         labels = []
@@ -1124,6 +1128,41 @@ class ASM_FILE():
                             #~ instruction = desass(words[1].getValue(), words[2].getValue()
                             #~ writeln(instruction)
         
+    def getLineReport(self, line_num):
+        lines = self.getAsmLines()
+        if line_num < len(lines):
+            line = lines[line_num]
+            words = []
+            bytes = " ".join(["%02X"%byte for byte in line.getBytes()])
+            for word in line.getWords():
+                if not word.isSolved():
+                    words.append(word.getLabel())
+                else:
+                    value = word.get()
+                    if value == None:
+                        words.append('None')
+                    elif type(value) == int:
+                        words.append("%04X"%value)
+                    elif type(value) == tuple:
+                        words.append(" ".join(("%02X"%byte for byte in value)))
+                    elif value == "---":
+                        words.append("    ")
+                    else:
+                        raise Exception("unknown type %s"%value)
+            pc = line.getPC()
+            if pc == None:
+                pc = "----"
+            else:
+                pc = "%04X"%pc
+                
+            return "#%05d %-30s #%05d %-30s %-30s %s %s\n"%(line_num+1, line.getText(), line.getLine().getNum(), line.getLine().getText(), " ".join(words), pc, bytes)
+
+    def getReport(self):
+        otext = EMPTY_STR
+        for line_num in range(len(self.__asm_lines)):
+            otext += self.getLineReport(line_num)
+        return otext
+
     def __str__(self):
         otext = EMPTY_STR
         for asm_line in self.__asm_lines:
