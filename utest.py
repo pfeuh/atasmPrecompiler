@@ -551,7 +551,7 @@ if __name__ == "__main__":
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
         params = getArgumentParserParams(asm, args)
 
-        source = asm.ASM_FILE(params)
+        source = asm.ASSEMBLER(params)
         source.assemble()
         
         # let's compare bytes of reference source assembled with atasm
@@ -652,7 +652,7 @@ if __name__ == "__main__":
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
  
-        source = asm.ASM_FILE(params) 
+        source = asm.ASSEMBLER(params) 
         assert len(source.getAsmLines()) == 0
         assert len(source.getSourceLines()) == 0
         assert len(source.getWords()) == 0
@@ -696,8 +696,18 @@ if __name__ == "__main__":
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
  
-        source = asm.ASM_FILE(params) 
+        source = asm.ASSEMBLER(params) 
         source.assemble()
+        
+        line = source.getAsmLine(2)
+        write(source.getLineReport(2))
+        print line
+        words = line.getWords()
+        assert words[0].isSolved()
+        
+        
+        
+        
         print source.getReport()
 
     #~ test_precompiler()

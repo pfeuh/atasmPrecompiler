@@ -24,4 +24,12 @@ for byte in tmp_lst:
 
 print tuple(tmp_lst)
 print tuple([-1])
+
+words = []
+for car in "Hello, World!":
+    words.append("$%02X"%ord(car))
+print ",".join(words)
+
+
+
     

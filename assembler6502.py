@@ -339,6 +339,10 @@ class WORD():
             return True
         return False
 
+    def isByte(self):
+        if self.__wtype in (TYPE_VARIABLE):
+            return self.__value <= 0xff
+
     def getLabel(self):
         return self.__text
 
@@ -514,7 +518,7 @@ class ASM_LINE():
         
         return otext + CHAR_LF
 
-class ASM_FILE():
+class ASSEMBLER():
     def __init__(self, params, solver_fp=None):
         # arguments stuff
         self.__params = params
@@ -543,6 +547,10 @@ class ASM_FILE():
         
     def getAsmLines(self):
         return self.__asm_lines
+        
+    def getAsmLine(self, line_num):
+        if line_num < len(self.__asm_lines):
+            return self.__asm_lines[line_num]
         
     def debugStr(self):
         otext = EMPTY_STR
@@ -582,7 +590,7 @@ class ASM_FILE():
     def getWords(self):
         return self.__words
         
-    def decodeValue(self, chars):
+    def decodeValue(self, chars, info):
         if chars.startswith(CHAR_DOLLAR):
             # vintage assemblers use $ instead of 0x for hex values
             chars = "0x" + chars[1:]
@@ -592,7 +600,7 @@ class ASM_FILE():
         elif chars.startswith(CHAR_SINGLE_QUOTE):
             # vintage assemblers use ' to prefix a single character
             if len(chars) != 2:
-                printError("syntax on word '%s'"%chars, line)
+                printError("syntax on word '%s'"%chars, info)
             else:
                 chars = "0x%04x"%ord(chars[1])
         elif chars[0] in "0123456789-":
@@ -658,12 +666,14 @@ class ASM_FILE():
 
             # line is created, let's add its words
             labels = [label for label in extractLabelsFromLine(line.getText(), line)]
+            info = line.getLine()
+            
             for position, label in enumerate(labels):
                 if not position:
                     if label.endswith(":"):
                         label = label[:-1]
 
-                word = self.InitializeWord(label, position, line)
+                word = self.InitializeWord(label, position, info)
                 if label in self.__words.keys():
                     # let's check a little list...
                     global_word = self.__words[label]
@@ -737,7 +747,7 @@ class ASM_FILE():
                         writeln("-> None", fp=self.__solver_fp)
                     writeln("-"*40, fp=self.__solver_fp)
         
-    def InitializeWord(self, label, word_num, line):
+    def InitializeWord(self, label, word_num, info):
         word = WORD(label)
         test_value = False
 
@@ -748,7 +758,7 @@ class ASM_FILE():
                 return self.addWord(WORD(label, TYPE_VARIABLE))
             else:
                 if label != EMPTY_STR:
-                    printError("Unexpected word '%s'"%label, line)
+                    printError("Unexpected word '%s'"%label, info)
                 else:
                     word.setType(TYPE_VOID)
                     word.set("---")
@@ -763,7 +773,7 @@ class ASM_FILE():
             elif label in COMMANDS:
                 return WORD(label, TYPE_COMMAND)
             else:
-                printError("Unexpected word '%s'"%label, line)
+                printError("Unexpected word '%s'"%label, info)
                 
         elif word_num >= 2:
             # from 3rd position, words can be everything except opcode or command
@@ -773,8 +783,8 @@ class ASM_FILE():
                 return WORD(label, TYPE_PONCTUATION)
             elif label in REGISTERS:
                 return WORD(label, REGISTERS)
-            elif self.decodeValue(label) != None:
-                return self.addWord(WORD(label, TYPE_VARIABLE, self.decodeValue(label)))
+            elif self.decodeValue(label, info) != None:
+                return self.addWord(WORD(label, TYPE_VARIABLE, self.decodeValue(label, info)))
             elif isString(label):
                 return WORD(label, TYPE_STRING, label)
 
@@ -921,28 +931,14 @@ class ASM_FILE():
         if not solved:
             printWarning("unsolved opcode %s"%opcode, line)
 
-        #~ if not solved:
-            #~ if nb_words >= 2:
-                #~ found_bad = False
-                #~ for unknown_word in words[2:]:
-                    #~ if unknown_word.getLabel().lower in (',', 'x', 'y', 'a'):
-                        #~ found_bad = True
-                        #~ break
-                #~ if not found_bad:
-                    #~ value = getOpcodeValue(opcode, ABSOLUTE, line)
-                    #~ word.set(value)
-                    #~ pc.add(getInstructionSize(value))
-                    #~ solved = True
-        #~ if not solved:
-            #~ printWarning("unsolved opcode %s"%opcode, line)
-
     def computeOpcodeData(self, line, pc):
         if pc.isOK():
             info = line.getLine()
             words = line.getWords()
             if len(words) >= 2:
                 item = words[1]
-                if item.isSolved():
+                #if item.isSolved():
+                if 1:
                     
                     if item.getType() == TYPE_OPCODE:
                         opcode = item.get()
@@ -983,8 +979,15 @@ class ASM_FILE():
                                         elif mode == ABSOLUTEY:
                                             line.setBytes((opcode,data & 255, data/ 256))
                                         return
-                            
-
+                        if len(words) == 4:
+                            if words[2].get() == "#":
+                                if words[3].isSolved():
+                                    data = words[3].get()
+                                    if not words[3].isByte():
+                                        printError("too big immediate value (%04x)"%data, info)
+                                    else:
+                                        line.setBytes((opcode,data))
+                                        
                     
 
 #~ INDIRECTX = 'IndirectX'
@@ -1416,8 +1419,8 @@ if __name__ == "__main__":
     ##################
 
     # let's parse source file and clean it
-    #~ source = ASM_FILE(ap.getArgsDictionary(), solver_fp=open(buildName(ap.get('-ifname'), "solver.asm"), "w") )
-    source = ASM_FILE(ap.getArgsDictionary())
+    #~ source = ASSEMBLER(ap.getArgsDictionary(), solver_fp=open(buildName(ap.get('-ifname'), "solver.asm"), "w") )
+    source = ASSEMBLER(ap.getArgsDictionary())
     
     source.assemble()
     diskSave(buildName(ap.get('-ifname'), "debug.asm"), source.debugStr())
