@@ -34,7 +34,8 @@ main
 
 println
     jsr print
-    lda #CHAR_RETURN
+    ; lda #CHAR_RETURN
+    lda #741
     sta PUTSCR_REG
     rts
 
@@ -56,7 +57,7 @@ print_out
     rts
 
 print_nibble
-    phx
+    pha
     and #$0f
     tax
     lda hextab, x

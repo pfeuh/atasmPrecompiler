@@ -20,6 +20,7 @@ if 1:
     CHAR_DOLLAR = '$'
     CHAR_TILD = '~'
     CHAR_LF = '\n'
+    CHAR_EQUAL = '='
     
     DEFAULT_PC_VALUE = 0x200
 
@@ -41,15 +42,16 @@ if 1:
 
     TYPE_VOID = 0
     TYPE_VARIABLE = 1
-    TYPE_COMMAND = 2
+    TYPE_DIRECTIVE = 2
     TYPE_OPCODE = 3
     TYPE_KEYWORD = 4
     TYPE_PONCTUATION = 5
     TYPE_STRING = 6
-    WORD_TYPES = (None, TYPE_VOID, TYPE_VARIABLE, TYPE_COMMAND, TYPE_OPCODE, TYPE_KEYWORD, TYPE_PONCTUATION, TYPE_STRING)
-    TYPE_NAME = {None:"None", TYPE_VOID:'void', TYPE_VARIABLE:'variable', TYPE_COMMAND:'command', TYPE_OPCODE:'opcode', TYPE_KEYWORD:'keyword', TYPE_PONCTUATION:'ponct',TYPE_STRING:'string'}
+    TYPE_CONSTANT = 7
+    WORD_TYPES = (None, TYPE_VOID, TYPE_VARIABLE, TYPE_DIRECTIVE, TYPE_OPCODE, TYPE_KEYWORD, TYPE_PONCTUATION, TYPE_STRING, TYPE_CONSTANT)
+    TYPE_NAME = {None:"None", TYPE_VOID:'void', TYPE_VARIABLE:'variable', TYPE_DIRECTIVE:'directive', TYPE_OPCODE:'opcode', TYPE_KEYWORD:'keyword', TYPE_PONCTUATION:'ponct',TYPE_STRING:'string', TYPE_CONSTANT:"const"}
 
-    PONCTUATION = ('(', ')', ',', '#', '+', '-', '/', '*', '=', '<', '>', '&', '!', '|', '^')
+    PONCTUATION = ('(', ')', ',', '#', '+', '-', '/', '*', CHAR_EQUAL, '<', '>', '&', '!', '|', '^')
     
     CMD_BYTE = '.byte'
     CMD_WORD = '.word'
@@ -58,10 +60,10 @@ if 1:
     CMD_CH_ARRAY = '.ch_array'
     CMD_DS = '.ds'
     CMD_ORG = '*'
-    COMMANDS = (CMD_BYTE, CMD_WORD, CMD_DBYTE, CMD_STRING, CMD_CH_ARRAY, CMD_DS, CMD_ORG)
+    DIRECTIVES = (CMD_BYTE, CMD_WORD, CMD_DBYTE, CMD_STRING, CMD_CH_ARRAY, CMD_DS, CMD_ORG)
 
     REGISTERS = ('x', 'y', 'X', 'Y', 'a', 'A')
-    KEYWORDS = COMMANDS + PONCTUATION + REGISTERS
+    KEYWORDS = DIRECTIVES + PONCTUATION + REGISTERS
 
 def write(text, fp=sys.stdout):
     if fp != None:
@@ -88,17 +90,10 @@ def printError(message, line=None):
         # the goal is to trig an error, then, it's possible to follow the white rabbit
         1/0
     elif line != None:
-        writeln('File "%s", line %d, error : %s - %s'%(line.getFname(), line.getNum(), message, line.getText()))
+        writeln('File "%s", line %d, error : %s'%(line.getFname(), line.getNum(), message))
+        writeln(line.getText())
     else:
         writeln('Error : %s'%(message))
-    sys.exit(1)
-    #~ if ap.get('-debug'):
-        #~ # the goal is to trig an error, then, it's possible to follow the white rabbit
-        #~ 1/0
-    #~ elif line != None:
-        #~ writeln('File "%s", line %d, error : %s - %s'%(line.getFname(), line.getNum(), message, line.getText()))
-    #~ else:
-        #~ writeln('Error : %s'%(message))
     #~ sys.exit(1)
 
 def buildName(old_name, new_name):
@@ -434,14 +429,38 @@ class ASM_LINE():
         self.__text = text
         self.__solved = False
         self.__bytes = []
-        self.__pc = None
+        self.__address = None
         self.__words = []
 
-    def setPC(self, prog_count):
-        self.__pc= prog_count
+    def hasLabel(self):
+        if len(self.__words):
+            return self.__words[0].getType() == TYPE_VARIABLE
+        else:
+            return False
 
-    def getPC(self):
-        return self.__pc
+    def isMnemonicLine(self):
+        if len(self.__words) >= 2:
+            return self.__words[1].getType() == TYPE_OPCODE
+        else:
+            return False
+    
+    def isDirectiveLine(self):
+        if len(self.__words) >= 2:
+            return self.__words[1].getType() == TYPE_DIRECTIVE
+        else:
+            return False
+    
+    def isAffectationLine(self):
+        if len(self.__words) >= 4:
+            return self.__words[2].getLabel() == CHAR_EQUAL
+        else:
+            return False
+    
+    def setAddress(self, prog_count):
+        self.__address= prog_count
+
+    def getAddress(self):
+        return self.__address
 
     def addWord(self, word):
         if word in (None, str):
@@ -519,6 +538,12 @@ class ASM_LINE():
         return otext + CHAR_LF
 
 class ASSEMBLER():
+    const_num = 0
+    
+    def getNewConstantName(self):
+        ASSEMBLER.const_num += 1
+        return "const_%04x"%ASSEMBLER.const_num
+        
     def __init__(self, params, solver_fp=None):
         # arguments stuff
         self.__params = params
@@ -678,7 +703,7 @@ class ASSEMBLER():
                     # let's check a little list...
                     global_word = self.__words[label]
                     if word.getType() != global_word.getType():
-                        raise Exception("datatype mismatch!\nnew word:%s\nold_word:%s"%(str(word), str(ret_word)))
+                        raise Exception("datatype mismatch!\nnew word:%s\nold_word:%s"%(str(word), str(global_word)))
                     if global_word.isSolved():
                         word = global_word
                     else:
@@ -692,42 +717,301 @@ class ASSEMBLER():
                 line.addWord(word)
                 
     def assemble(self):
+        # this is only one pass, all may not be solved with it
         pc = PROGRAM_COUNTER(self.__org)
 
         for line in self.__asm_lines:
             if not line.isSolved():
                 self.parseLine(line, pc)
-        if pc.isOK():
-            writeln("assembly successfuly terminated!")
 
     def parseLine(self, line, pc):
+        line.setAddress, pc.get()
+        info = line.getLine()
+        
+        if line.hasLabel():
+            self.computeLabel(line, pc)
+        
+        if line.isMnemonicLine():
+            self.computeOpcode(line, pc)
+        elif line.isDirectiveLine():
+            self.computeDirective(line, pc)
+        elif line.isAffectationLine():
+            self.computeAffectation(line, pc)
+        else:
+            if not line.hasLabel():
+                printError("syntax error", info)
+        
+    def computeLabel(self, line, pc):
         words = line.getWords()
-        if not len(words):
-            raise Exception("got empty line!")
-        
-        if words[0].isVariable():
-            if not words[0].isSolved():
-                if pc.isOK():
-                    words[0].set(pc.get())
-
-        if len(words) >= 2:
-            if words[1].isOpcode():
-                if not words[1].isSolved():
-                    self.computeOpcode(line, pc)
-                    
-        if len(words) >= 3:
-            self.computeWordSplitter(line, pc)
-        
-        if len(words) >= 4:
-            self.computeAffectations(line)
-                    
-        if len(words) >= 3:
-            self.computeCommands(line, pc)
+        word = words[0]
+        old_value = word.get()
+        new_value = line.getAddress()
+        if old_value != None:
+            if new_value != None:
+                word.set(new_value)
+            else:
+                printError("program counter mismatch! already set at $%04X attempt to write $%04X"%(old_value, new_value), line.getLine())
+        else:
+            return
             
-        if len(words) >= 2:
-            self.computeOpcodeData(line, pc)
+    def computeOpcode(self, line, pc):
+        words = line.getWords()
+        nb_words = len(words)
+        info = line.getLine()
+        
+        word = words[1]
+        if word.isSolved():
+            return
+            
+        mnemonic = word.getLabel().lower()
+        
+        if nb_words >= 3 and mnemonic in RELATIVE_OPCODES:
+            self.computeRelative(line, pc)
+        elif nb_words == 2 and mnemonic in IMPLIED_OPCODES:
+            self.computeImplied(line, pc)
+        elif nb_words == 3 and words[2].getLabel().lower() == "a":
+            self.computeAccumulator(line, pc)
+        elif nb_words >= 4 and words[2].getLabel() == "#":
+            self.computeImmediate(line, pc)
+        elif nb_words >= 7 and words[-1].getLabel() == ")" and words[-2].getLabel().lower() == "x" and words[-3].getLabel() == "," and words[2].getLabel() == "(":
+            self.computeIndirectx(line, pc)
+        elif nb_words >= 7 and words[-1].getLabel().lower() == "y" and words[-2].getLabel() == "," and words[-3].getLabel() == ")" and words[2].getLabel() == "(":
+            self.computeIndirecty(line, pc)
+        elif nb_words >= 5 and words[-1].getLabel() == ")" and words[2].getLabel() == "(":
+            self.computeIndirect(line, pc)
+        elif nb_words >= 5 and words[-1].getLabel().lower() == "x" and words[-2].getLabel() == ",":
+            self.computeAbsolutex(line, pc)
+        elif nb_words >= 5 and words[-1].getLabel().lower() == "y" and words[-2].getLabel() == ",":
+            self.computeAbsolutey(line, pc)
+        elif nb_words >= 3:
+            self.computeAbsolute(line, pc)
+        else:
+            printError('illegal addressing mode', info)
+
+    def computeRelative(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = RELATIVE
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[2:], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                move = value - (pc.get() + 2) 
+                if move < -128 or move > 127:
+                    printError("relative value out of range pc=$%04x target=$%04X move:$%04X\n"%(pc.get(), value, move), info)
+                else:
+                    move = move & 0xff
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, move)
+                    line.setBytes((opcode, move))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeImplied(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = IMPLIED
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            # all prerequisites are good, let's solve
+            line.setAddress(pc.get())
+            pc.add(getInstructionSize(opcode))
+            words[1].set(opcode)
+            line.setBytes((opcode,))
+
+    def computeAccumulator(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = ACCUMULATOR
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            # all prerequisites are good, let's solve
+            line.setAddress(pc.get())
+            pc.add(getInstructionSize(opcode))
+            words[1].set(opcode)
+            del words[2]
+            line.setBytes((opcode,))
+
+    def computeImmediate(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = IMMEDIATE
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[3:], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 255:
+                    printError("immediate value $%04x out of range\n"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeIndirectx(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = INDIRECTX
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[3:-3], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 255:
+                    printError("zero page value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value))
+                    while len(words) > 3:
+                        del words[-1]
+
+
+    def computeIndirecty(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = INDIRECTY
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[3:-3], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 255:
+                    printError("zero page value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeIndirect(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = INDIRECT
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[3:-1], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 65535:
+                    printError("absolute value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value & 255, value / 256))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeAbsolute(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = ABSOLUTE
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[2:], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 65535:
+                    printError("absolute value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value & 255, value / 256))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeAbsolutex(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = ABSOLUTEX
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[2:-2], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 65535:
+                    printError("absolute value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value & 255, value / 256))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeAbsolutey(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        mnenonic = words[1].getLabel().lower()
+        mode = ABSOLUTEY
+        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
+        if opcode != None:
+            value = self.solveExpression(words[2:-2], info)
+            if value != None and pc.isOK():
+                # all prerequisites are good, let's solve
+                if value < 0 or value > 65535:
+                    printError("absolute value $%04x out of range"%(value), info)
+                else:
+                    line.setAddress(pc.get())
+                    pc.add(getInstructionSize(opcode))
+                    words[1].set(opcode)
+                    words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
+                    line.setBytes((opcode, value & 255, value / 256))
+                    while len(words) > 3:
+                        del words[-1]
+
+    def computeAffectation(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        value = self.solveExpression(words[3:], info)
+        if value != None:
+            words[1].set(value)
+            while len(words) > 2:
+                del words[-1]
+
+    def computeDirective(self, line, pc):
+        return
 
     def computeWordSplitter(self, line, pc):
+        # '<' means use most significant byte
+        # '>' means use least significant byte
         info = line.getLine()
         words = line.getWords()
         nb_words = len(words)
@@ -737,7 +1021,6 @@ class ASSEMBLER():
                 if index == nb_words - 1:
                     printError("no value after '%s'"%label, info)
                 else:
-                    #~ result = self.solveExpression(words[index+1:], info)
                     result = self.solveExpression([words[index+1]], info)
                     if result != None:
                         result = formatData(result, label, word, pc, info)
@@ -770,8 +1053,8 @@ class ASSEMBLER():
             elif label.lower() in OPCODES:
                 # insensitive case allowed
                 return WORD(label, TYPE_OPCODE)
-            elif label in COMMANDS:
-                return WORD(label, TYPE_COMMAND)
+            elif label in DIRECTIVES:
+                return WORD(label, TYPE_DIRECTIVE)
             else:
                 printError("Unexpected word '%s'"%label, info)
                 
@@ -790,7 +1073,7 @@ class ASSEMBLER():
 
         return word
 
-    def computeOpcode(self, line, pc):
+    def XX__computeOpcode(self, line, pc):
         if pc.isOK():
             line.setPC(pc.get())
         
@@ -1006,21 +1289,21 @@ class ASSEMBLER():
         # solve some affectations
         words = line.getWords()
         if len(words) == 4:
-            if words[2].getLabel() == "=":
+            if words[2].getLabel() == CHAR_EQUAL:
                 if words[3].isVariable():
                     if words[3].isSolved():
                         words[1].set(words[3].get())
                         del words[-1]
                         del words[-1]
 
-    def computeCommands(self, line, pc):
+    def computeDirectives(self, line, pc):
         # solve some keywords
         info = line.getLine()
         words = line.getWords()
         nb_words = len(words)
         command = words[1]
 
-        if command.getType() != TYPE_COMMAND:
+        if command.getType() != TYPE_DIRECTIVE:
             return
 
         #~ if command.isSolved():
@@ -1028,7 +1311,7 @@ class ASSEMBLER():
 
         label = command.getLabel()
         
-        if label in COMMANDS:
+        if label in DIRECTIVES:
             result = self.solveExpression(words[2:], info)
             if result != None:
                 bytes = formatData(result, label, command, pc, info)
@@ -1046,18 +1329,16 @@ class ASSEMBLER():
                 labels.append(str(word.get()))
             else:
                 labels.append(str(word.getLabel()))
-        writeln(info.getText(), self.__solver_fp)
+        #~ write("%05d %s >>> "%(info.getNum(), info.getText()))
         expression = CHAR_SPACE.join(labels)
-        writeln(expression, self.__solver_fp)
-        result = None
+        #~ write("%s >>> "%expression)
 
         try:
             result = eval(expression)
         except:
-            pass
-
-        #~ print "->%s"%str(result)
+            result = None
         
+        #~ writeln(result)
         return result
 
     def setSolveExpressionFp(self, fp):
@@ -1152,7 +1433,7 @@ class ASSEMBLER():
                         words.append("    ")
                     else:
                         raise Exception("unknown type %s"%value)
-            pc = line.getPC()
+            pc = line.getAddress()
             if pc == None:
                 pc = "----"
             else:
@@ -1420,10 +1701,10 @@ if __name__ == "__main__":
 
     # let's parse source file and clean it
     #~ source = ASSEMBLER(ap.getArgsDictionary(), solver_fp=open(buildName(ap.get('-ifname'), "solver.asm"), "w") )
-    source = ASSEMBLER(ap.getArgsDictionary())
     
-    source.assemble()
-    diskSave(buildName(ap.get('-ifname'), "debug.asm"), source.debugStr())
+    #~ source = ASSEMBLER(ap.getArgsDictionary())
+    #~ source.assemble()
+    #~ diskSave(buildName(ap.get('-ifname'), "debug.asm"), source.debugStr())
 
     #~ diskSave(buildName(ap.get('-ifname'), "asm_lines.asm"), source.getCodeText())
     #~ diskSave(buildName(ap.get('-ifname'), "asm_words.asm"), str(source))
