@@ -775,13 +775,13 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
-        makeFile(fname, [' beq $600 - 100 + 100', ' beq $600', ' beq $600'])
+        makeFile(fname, [' beq $600 - 100 + 100', ' beq $600', ' beq $600', ' beq $1234', ' beq $600'])
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
  
         assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 3
+        assert len(assembler.getAsmLines()) == 5
 
         assert getLineWord(assembler, 0, 2).get() == 0x600
         assert getLineWord(assembler, 0, 4).get() == 100
@@ -801,6 +801,10 @@ if __name__ == "__main__":
             assert assembler.getAsmLine(line_num).getAddress() == pc
             target -= 2
             pc += 2
+
+        pc = 0x600
+        for line_num in range(3, 5):
+            assert assembler.getAsmLine(line_num).getAddress() == pc + line_num * 2
 
     def test_computeImplied():
         import assembler6502 as asm
@@ -849,21 +853,143 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
-        makeFile(fname, [' lda #12', ' ldx #$12', '  sbc #44'])
+        makeFile(fname, [' lda #12', ' ldx #$12', '  sbc #44', ' ldx #$122', '  sbc #48'])
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
  
         assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 3
+        assert len(assembler.getAsmLines()) == 5
 
         assembler.assemble()
 
         assert assembler.getAsmLine(0).getBytes() == (0xa9, 12)
         assert assembler.getAsmLine(1).getBytes() == (0xa2, 0x12)
         assert assembler.getAsmLine(2).getBytes() == (0xe9, 44)
-        for index in range(3):
+        for index in range(5):
             assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 2
+
+    def test_computeIndirecty():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  sbc ($45), Y', ' lda (33),y', ' cmp ($44),y', '  sbc ($45), Y', '  sbc ($45), Y', '  sbc ($454), Y', '  sbc ($45), Y'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 7
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0xf1, 0x45)
+        assert assembler.getAsmLine(1).getBytes() == (0xb1, 0x21)
+        assert assembler.getAsmLine(2).getBytes() == (0xd1, 0x44)
+        assert assembler.getAsmLine(3).getBytes() == (0xf1, 0x45)
+        assert assembler.getAsmLine(4).getBytes() == (0xf1, 0x45)
+        for index in range(7):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 2
+
+    def test_computeIndirectx():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  sbc ($45, x)', ' lda (33, x)', ' cmp ($44, x)', '  sbc ($45, x)', '  sbc ($45, x)', '  sbc ($456, x)', '  sbc ($45, x)'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 7
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0xe1, 0x45)
+        assert assembler.getAsmLine(1).getBytes() == (0xa1, 0x21)
+        assert assembler.getAsmLine(2).getBytes() == (0xc1, 0x44)
+        assert assembler.getAsmLine(3).getBytes() == (0xe1, 0x45)
+        assert assembler.getAsmLine(4).getBytes() == (0xe1, 0x45)
+        for index in range(7):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 2
+
+    def test_computeIndirect():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  jmp ($1234)', '  jmp ($5678)', '  jmp ($90ab)', '  jmp ($2468)', '  jmp ($90abc)', '  jmp ($2468)', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0x6c, 0x34, 0x12)
+        assert assembler.getAsmLine(1).getBytes() == (0x6c, 0x78, 0x56)
+        assert assembler.getAsmLine(2).getBytes() == (0x6c, 0xab, 0x90)
+        assert assembler.getAsmLine(3).getBytes() == (0x6c, 0x68, 0x24)
+        for index in range(6):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
+
+    def test_computeAbsolute():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda $1234', '  sta $4567', '  jmp $90ab', '  jmp $2468', '  jmp $980ab', '  jmp $2468', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0xad, 0x34, 0x12)
+        assert assembler.getAsmLine(1).getBytes() == (0x8d, 0x67, 0x45)
+        assert assembler.getAsmLine(2).getBytes() == (0x4c, 0xab, 0x90)
+        assert assembler.getAsmLine(3).getBytes() == (0x4c, 0x68, 0x24)
+        for index in range(6):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
+
+    def test_computeAbsolutex():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda $1234, x', '  sta $4567, x', '  adc $4321, x', '  and $8765, x', '  adc $43210, x', '  and $8765, x', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0xbd, 0x34, 0x12)
+        assert assembler.getAsmLine(1).getBytes() == (0x9d, 0x67, 0x45)
+        assert assembler.getAsmLine(2).getBytes() == (0x7d, 0x21, 0x43)
+        assert assembler.getAsmLine(3).getBytes() == (0x3d, 0x65, 0x87)
+        for index in range(6):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
+
+    def test_computeAbsolutey():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda $1234, y', '  sta $4567, y', '  adc $4321, y', '  and $8765, y', '  adc $43210, y', '  and $8765, y', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+
+        assembler.assemble()
+        assert assembler.getAsmLine(0).getBytes() == (0xb9, 0x34, 0x12)
+        assert assembler.getAsmLine(1).getBytes() == (0x99, 0x67, 0x45)
+        assert assembler.getAsmLine(2).getBytes() == (0x79, 0x21, 0x43)
+        assert assembler.getAsmLine(3).getBytes() == (0x39, 0x65, 0x87)
+        for index in range(6):
+            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
 
     def test_computeAffectation():
         import assembler6502 as asm
@@ -894,128 +1020,6 @@ if __name__ == "__main__":
         assert assembler.getAsmLine(0).getWords()[1].get() == 48
         assert len(assembler.getAsmLine(0).getWords()) == 2
 
-    def test_computeIndirecty():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  sbc ($45), Y', ' lda (33),y', ' cmp ($44),y', '  sbc ($45), Y', '  sbc ($45), Y'])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 5
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0xf1, 0x45)
-        assert assembler.getAsmLine(1).getBytes() == (0xb1, 0x21)
-        assert assembler.getAsmLine(2).getBytes() == (0xd1, 0x44)
-        assert assembler.getAsmLine(3).getBytes() == (0xf1, 0x45)
-        assert assembler.getAsmLine(4).getBytes() == (0xf1, 0x45)
-        for index in range(5):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 2
-
-    def test_computeIndirectx():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  sbc ($45, x)', ' lda (33, x)', ' cmp ($44, x)', '  sbc ($45, x)', '  sbc ($45, x)'])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 5
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0xe1, 0x45)
-        assert assembler.getAsmLine(1).getBytes() == (0xa1, 0x21)
-        assert assembler.getAsmLine(2).getBytes() == (0xc1, 0x44)
-        assert assembler.getAsmLine(3).getBytes() == (0xe1, 0x45)
-        assert assembler.getAsmLine(4).getBytes() == (0xe1, 0x45)
-        for index in range(5):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 2
-
-    def test_computeIndirect():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  jmp ($1234)', '  jmp ($5678)', '  jmp ($90ab)', '  jmp ($2468)', ])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 4
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0x6c, 0x34, 0x12)
-        assert assembler.getAsmLine(1).getBytes() == (0x6c, 0x78, 0x56)
-        assert assembler.getAsmLine(2).getBytes() == (0x6c, 0xab, 0x90)
-        assert assembler.getAsmLine(3).getBytes() == (0x6c, 0x68, 0x24)
-        for index in range(4):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
-
-    def test_computeAbsolute():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  lda $1234', '  sta $4567', '  jmp $90ab', '  jmp $2468', ])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 4
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0xad, 0x34, 0x12)
-        assert assembler.getAsmLine(1).getBytes() == (0x8d, 0x67, 0x45)
-        assert assembler.getAsmLine(2).getBytes() == (0x4c, 0xab, 0x90)
-        assert assembler.getAsmLine(3).getBytes() == (0x4c, 0x68, 0x24)
-        for index in range(4):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
-
-    def test_computeAbsolutex():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  lda $1234, x', '  sta $4567, x', '  adc $4321, x', '  and $8765, x', ])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 4
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0xbd, 0x34, 0x12)
-        assert assembler.getAsmLine(1).getBytes() == (0x9d, 0x67, 0x45)
-        assert assembler.getAsmLine(2).getBytes() == (0x7d, 0x21, 0x43)
-        assert assembler.getAsmLine(3).getBytes() == (0x3d, 0x65, 0x87)
-        for index in range(4):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
-
-    def test_computeAbsolutey():
-        import assembler6502 as asm
-        
-        fname = "utest/testfile.asm"
-        makeFile(fname, ['  lda $1234, y', '  sta $4567, y', '  adc $4321, y', '  and $8765, y', ])
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
-        params = getArgumentParserParams(asm, args)
-        info = asm.SOURCE_LINE("None", "utest", 0)
- 
-        assembler = asm.ASSEMBLER(params) 
-        assert len(assembler.getAsmLines()) == 4
-
-        assembler.assemble()
-        assert assembler.getAsmLine(0).getBytes() == (0xb9, 0x34, 0x12)
-        assert assembler.getAsmLine(1).getBytes() == (0x99, 0x67, 0x45)
-        assert assembler.getAsmLine(2).getBytes() == (0x79, 0x21, 0x43)
-        assert assembler.getAsmLine(3).getBytes() == (0x39, 0x65, 0x87)
-        for index in range(4):
-            assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
-
     #~ fpDebug = open("utest/debug.txt", "w")
     test_precompiler()
     test_tables()
@@ -1038,4 +1042,4 @@ if __name__ == "__main__":
     test_computeAbsolutey()
     #~ test_compiler()
     
-    sys.stdout.write("A L L   T E S T S   P A S S E D !\n")
+    sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

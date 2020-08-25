@@ -801,16 +801,17 @@ class ASSEMBLER():
                 # all prerequisites are good, let's solve
                 move = value - (pc.get() + 2) 
                 if move < -128 or move > 127:
-                    printError("relative value out of range pc=$%04x target=$%04X move:$%04X\n"%(pc.get(), value, move), info)
+                    printError("relative value out of range pc=$%04x target=$%04X move:$%04X"%(pc.get(), value, move), info)
                 else:
                     move = move & 0xff
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, move)
                     line.setBytes((opcode, move))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeImplied(self, line, pc):
         words = line.getWords()
@@ -821,10 +822,11 @@ class ASSEMBLER():
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
             # all prerequisites are good, let's solve
-            line.setAddress(pc.get())
-            pc.add(getInstructionSize(opcode))
             words[1].set(opcode)
             line.setBytes((opcode,))
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeAccumulator(self, line, pc):
         words = line.getWords()
@@ -835,11 +837,12 @@ class ASSEMBLER():
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
             # all prerequisites are good, let's solve
-            line.setAddress(pc.get())
-            pc.add(getInstructionSize(opcode))
             words[1].set(opcode)
             del words[2]
             line.setBytes((opcode,))
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeImmediate(self, line, pc):
         words = line.getWords()
@@ -853,15 +856,16 @@ class ASSEMBLER():
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
                 if value < 0 or value > 255:
-                    printError("immediate value $%04x out of range\n"%(value), info)
+                    printError("immediate value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeIndirectx(self, line, pc):
         words = line.getWords()
@@ -877,14 +881,14 @@ class ASSEMBLER():
                 if value < 0 or value > 255:
                     printError("zero page value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value))
                     while len(words) > 3:
                         del words[-1]
-
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeIndirecty(self, line, pc):
         words = line.getWords()
@@ -900,13 +904,14 @@ class ASSEMBLER():
                 if value < 0 or value > 255:
                     printError("zero page value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeIndirect(self, line, pc):
         words = line.getWords()
@@ -922,13 +927,14 @@ class ASSEMBLER():
                 if value < 0 or value > 65535:
                     printError("absolute value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value & 255, value / 256))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeAbsolute(self, line, pc):
         words = line.getWords()
@@ -944,13 +950,14 @@ class ASSEMBLER():
                 if value < 0 or value > 65535:
                     printError("absolute value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value & 255, value / 256))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeAbsolutex(self, line, pc):
         words = line.getWords()
@@ -966,13 +973,14 @@ class ASSEMBLER():
                 if value < 0 or value > 65535:
                     printError("absolute value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value & 255, value / 256))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeAbsolutey(self, line, pc):
         words = line.getWords()
@@ -988,13 +996,14 @@ class ASSEMBLER():
                 if value < 0 or value > 65535:
                     printError("absolute value $%04x out of range"%(value), info)
                 else:
-                    line.setAddress(pc.get())
-                    pc.add(getInstructionSize(opcode))
                     words[1].set(opcode)
                     words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, value)
                     line.setBytes((opcode, value & 255, value / 256))
                     while len(words) > 3:
                         del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        line.setAddress(pc.get())
+        pc.add(getInstructionSize(opcode))
 
     def computeAffectation(self, line, pc):
         words = line.getWords()
