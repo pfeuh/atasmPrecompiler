@@ -604,7 +604,7 @@ if __name__ == "__main__":
             while len(otext) < 24:
                 otext += " "
             otext += "      %s"%line.getText()
-            writeln(otext)
+            #~ writeln(otext)
         saveBytes("utest/prog_bytes.bin", prog_bytes)
                 
         # let's compare
@@ -614,7 +614,10 @@ if __name__ == "__main__":
                 write("%-20s   "%str(line.getText()))
                 for byte in bytes:
                     ref_byte = buffer.get()
-                    write("%02x:%02x - "%(ref_byte, byte))
+                    if type(ref_byte) == int and type(byte) == int:
+                        write("%02x:%02x - "%(ref_byte, byte))
+                    else:
+                        write("%s:%s - "%(ref_byte, byte))
                     if byte != ref_byte:
                         asm.printError("difference with reference file!", line.getLine())
                 writeln("")
@@ -1288,35 +1291,36 @@ if __name__ == "__main__":
         assert lines[3].getAddress() == 0x60e
         assert lines[4].getAddress() == 0x618
         assert lines[5].getAddress() == 0x624
-
-    #~ fpDebug = open("utest/debug.txt", "w")
+    
     test_precompiler()
-    test_solveExpression()
-    test_tables()
-    test_getOpcodeValue()
-    test_createAsmLines()
-    test_AsmLine_hasLabel()
-    test_AsmLine_isMnemonicLine()
-    test_AsmLine_isDirectiveLine()
-    test_AsmLine_isAffectationLine()
-    test_computeRelative()
-    test_computeImplied()
-    test_computeAccumulator()
-    test_computeImmediate()
-    test_computeAffectation()
-    test_computeIndirecty()
-    test_computeIndirectx()
-    test_computeIndirect()
-    test_computeAbsolute()
-    test_computeAbsolutex()
-    test_computeAbsolutey()
-    test_computeByte()
-    test_computeWord()
-    test_computeDbyte()
-    test_computeString()
-    test_computeChArray()
-    test_computeDbs()
-    test_computeDws()
-    #~ test_compiler()
+
+    #~ test_solveExpression()
+    #~ test_tables()
+    #~ test_getOpcodeValue()
+    #~ test_createAsmLines()
+    #~ test_AsmLine_hasLabel()
+    #~ test_AsmLine_isMnemonicLine()
+    #~ test_AsmLine_isDirectiveLine()
+    #~ test_AsmLine_isAffectationLine()
+    #~ test_computeRelative()
+    #~ test_computeImplied()
+    #~ test_computeAccumulator()
+    #~ test_computeImmediate()
+    #~ test_computeAffectation()
+    #~ test_computeIndirecty()
+    #~ test_computeIndirectx()
+    #~ test_computeIndirect()
+    #~ test_computeAbsolute()
+    #~ test_computeAbsolutex()
+    #~ test_computeAbsolutey()
+    #~ test_computeByte()
+    #~ test_computeWord()
+    #~ test_computeDbyte()
+    #~ test_computeString()
+    #~ test_computeChArray()
+    #~ test_computeDbs()
+    #~ test_computeDws()
+    
+    test_compiler()
     
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

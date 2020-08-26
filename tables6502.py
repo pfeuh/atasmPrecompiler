@@ -156,3 +156,509 @@ CODE_SIZES = (
     2   , 2   , None, None, None, 2   , 2   , None, 1   , 3   , None, None, None, 3   , 3   , None, 
     )
 
+ADC_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+AND_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+ASL_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+BCC_MODES = (
+    RELATIVE, 
+    )
+
+BCS_MODES = (
+    RELATIVE, 
+    )
+
+BEQ_MODES = (
+    RELATIVE, 
+    )
+
+BIT_MODES = (
+    ZEROPAGE, ABSOLUTE, 
+    )
+
+BMI_MODES = (
+    RELATIVE, 
+    )
+
+BNE_MODES = (
+    RELATIVE, 
+    )
+
+BPL_MODES = (
+    RELATIVE, 
+    )
+
+BRK_MODES = (
+    IMPLIED, 
+    )
+
+BVC_MODES = (
+    RELATIVE, 
+    )
+
+BVS_MODES = (
+    RELATIVE, 
+    )
+
+CLC_MODES = (
+    IMPLIED, 
+    )
+
+CLD_MODES = (
+    IMPLIED, 
+    )
+
+CLI_MODES = (
+    IMPLIED, 
+    )
+
+CLV_MODES = (
+    IMPLIED, 
+    )
+
+CMP_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+CPX_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, 
+    )
+
+CPY_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, 
+    )
+
+DEC_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+DEX_MODES = (
+    IMPLIED, 
+    )
+
+DEY_MODES = (
+    IMPLIED, 
+    )
+
+EOR_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+INC_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+INX_MODES = (
+    IMPLIED, 
+    )
+
+INY_MODES = (
+    IMPLIED, 
+    )
+
+JMP_MODES = (
+    ABSOLUTE, INDIRECT, 
+    )
+
+JSR_MODES = (
+    ABSOLUTE, 
+    )
+
+LDA_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+LDX_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, ZEROPAGEY, ABSOLUTEY, 
+    )
+
+LDY_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+LSR_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+NOP_MODES = (
+    IMPLIED, 
+    )
+
+ORA_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+PHA_MODES = (
+    IMPLIED, 
+    )
+
+PHP_MODES = (
+    IMPLIED, 
+    )
+
+PLA_MODES = (
+    IMPLIED, 
+    )
+
+PLP_MODES = (
+    IMPLIED, 
+    )
+
+ROL_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+ROR_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+RTI_MODES = (
+    IMPLIED, 
+    )
+
+RTS_MODES = (
+    IMPLIED, 
+    )
+
+SBC_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+SEC_MODES = (
+    IMPLIED, 
+    )
+
+SED_MODES = (
+    IMPLIED, 
+    )
+
+SEI_MODES = (
+    IMPLIED, 
+    )
+
+STA_MODES = (
+    INDIRECTX, ZEROPAGE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+STX_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEY, 
+    )
+
+STY_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, 
+    )
+
+TAX_MODES = (
+    IMPLIED, 
+    )
+
+TAY_MODES = (
+    IMPLIED, 
+    )
+
+TSX_MODES = (
+    IMPLIED, 
+    )
+
+TXA_MODES = (
+    IMPLIED, 
+    )
+
+TXS_MODES = (
+    IMPLIED, 
+    )
+
+TYA_MODES = (
+    IMPLIED, 
+    )
+
+ADC_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+AND_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+ASL_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+BCC_MODES = (
+    RELATIVE, 
+    )
+
+BCS_MODES = (
+    RELATIVE, 
+    )
+
+BEQ_MODES = (
+    RELATIVE, 
+    )
+
+BIT_MODES = (
+    ZEROPAGE, ABSOLUTE, 
+    )
+
+BMI_MODES = (
+    RELATIVE, 
+    )
+
+BNE_MODES = (
+    RELATIVE, 
+    )
+
+BPL_MODES = (
+    RELATIVE, 
+    )
+
+BRK_MODES = (
+    IMPLIED, 
+    )
+
+BVC_MODES = (
+    RELATIVE, 
+    )
+
+BVS_MODES = (
+    RELATIVE, 
+    )
+
+CLC_MODES = (
+    IMPLIED, 
+    )
+
+CLD_MODES = (
+    IMPLIED, 
+    )
+
+CLI_MODES = (
+    IMPLIED, 
+    )
+
+CLV_MODES = (
+    IMPLIED, 
+    )
+
+CMP_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+CPX_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, 
+    )
+
+CPY_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, 
+    )
+
+DEC_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+DEX_MODES = (
+    IMPLIED, 
+    )
+
+DEY_MODES = (
+    IMPLIED, 
+    )
+
+EOR_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+INC_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+INX_MODES = (
+    IMPLIED, 
+    )
+
+INY_MODES = (
+    IMPLIED, 
+    )
+
+JMP_MODES = (
+    ABSOLUTE, INDIRECT, 
+    )
+
+JSR_MODES = (
+    ABSOLUTE, 
+    )
+
+LDA_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+LDX_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, ZEROPAGEY, ABSOLUTEY, 
+    )
+
+LDY_MODES = (
+    IMMEDIATE, ZEROPAGE, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+LSR_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+NOP_MODES = (
+    IMPLIED, 
+    )
+
+ORA_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+PHA_MODES = (
+    IMPLIED, 
+    )
+
+PHP_MODES = (
+    IMPLIED, 
+    )
+
+PLA_MODES = (
+    IMPLIED, 
+    )
+
+PLP_MODES = (
+    IMPLIED, 
+    )
+
+ROL_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+ROR_MODES = (
+    ZEROPAGE, ACCUMULATOR, ABSOLUTE, ZEROPAGEX, ABSOLUTEX, 
+    )
+
+RTI_MODES = (
+    IMPLIED, 
+    )
+
+RTS_MODES = (
+    IMPLIED, 
+    )
+
+SBC_MODES = (
+    INDIRECTX, ZEROPAGE, IMMEDIATE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+SEC_MODES = (
+    IMPLIED, 
+    )
+
+SED_MODES = (
+    IMPLIED, 
+    )
+
+SEI_MODES = (
+    IMPLIED, 
+    )
+
+STA_MODES = (
+    INDIRECTX, ZEROPAGE, ABSOLUTE, INDIRECTY, ZEROPAGEX, ABSOLUTEY, ABSOLUTEX, 
+    )
+
+STX_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEY, 
+    )
+
+STY_MODES = (
+    ZEROPAGE, ABSOLUTE, ZEROPAGEX, 
+    )
+
+TAX_MODES = (
+    IMPLIED, 
+    )
+
+TAY_MODES = (
+    IMPLIED, 
+    )
+
+TSX_MODES = (
+    IMPLIED, 
+    )
+
+TXA_MODES = (
+    IMPLIED, 
+    )
+
+TXS_MODES = (
+    IMPLIED, 
+    )
+
+TYA_MODES = (
+    IMPLIED, 
+    )
+
+MODES_BY_MNEMONIC = {
+    'adc':ADC_MODES,
+    'and':AND_MODES,
+    'asl':ASL_MODES,
+    'bcc':BCC_MODES,
+    'bcs':BCS_MODES,
+    'beq':BEQ_MODES,
+    'bit':BIT_MODES,
+    'bmi':BMI_MODES,
+    'bne':BNE_MODES,
+    'bpl':BPL_MODES,
+    'brk':BRK_MODES,
+    'bvc':BVC_MODES,
+    'bvs':BVS_MODES,
+    'clc':CLC_MODES,
+    'cld':CLD_MODES,
+    'cli':CLI_MODES,
+    'clv':CLV_MODES,
+    'cmp':CMP_MODES,
+    'cpx':CPX_MODES,
+    'cpy':CPY_MODES,
+    'dec':DEC_MODES,
+    'dex':DEX_MODES,
+    'dey':DEY_MODES,
+    'eor':EOR_MODES,
+    'inc':INC_MODES,
+    'inx':INX_MODES,
+    'iny':INY_MODES,
+    'jmp':JMP_MODES,
+    'jsr':JSR_MODES,
+    'lda':LDA_MODES,
+    'ldx':LDX_MODES,
+    'ldy':LDY_MODES,
+    'lsr':LSR_MODES,
+    'nop':NOP_MODES,
+    'ora':ORA_MODES,
+    'pha':PHA_MODES,
+    'php':PHP_MODES,
+    'pla':PLA_MODES,
+    'plp':PLP_MODES,
+    'rol':ROL_MODES,
+    'ror':ROR_MODES,
+    'rti':RTI_MODES,
+    'rts':RTS_MODES,
+    'sbc':SBC_MODES,
+    'sec':SEC_MODES,
+    'sed':SED_MODES,
+    'sei':SEI_MODES,
+    'sta':STA_MODES,
+    'stx':STX_MODES,
+    'sty':STY_MODES,
+    'tax':TAX_MODES,
+    'tay':TAY_MODES,
+    'tsx':TSX_MODES,
+    'txa':TXA_MODES,
+    'txs':TXS_MODES,
+    'tya':TYA_MODES,
+    }

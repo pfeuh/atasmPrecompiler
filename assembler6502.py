@@ -6,6 +6,9 @@ import os
 
 from tables6502 import *
 
+DEBUG = "-debug" in sys.argv
+SILENT = "-silent" in sys.argv
+
 if 1:
     VERSION = "0.99"
     COMMENT_TAG = ";"
@@ -79,27 +82,30 @@ def writeln(text, fp=sys.stdout):
     write("\n", fp)
 
 def printLink(message=EMPTY_STR, line=None):
-    if line != None:
-        writeln('File "%s", line %d, %s'%(line.getFname(), line.getNum(), message))
-        writeln(line.getText())
+    if not SILENT:
+        if line != None:
+            writeln('File "%s", line %d, %s'%(line.getFname(), line.getNum(), message))
+            writeln(line.getText())
     
 def printWarning(message, line=None):
-    if line != None:
-        writeln('File "%s", line %d, warning : %s'%(line.getFname(), line.getNum(), message))
-        writeln(line.getText())
-    else:
-        writeln('Warning : %s'%(message))
+    if not SILENT:
+        if line != None:
+            writeln('File "%s", line %d, warning : %s'%(line.getFname(), line.getNum(), message))
+            writeln(line.getText())
+        else:
+            writeln('Warning : %s'%(message))
     
 def printError(message, line=None):
-    if ap.get('-debug'):
+    if DEBUG:
         # the goal is to trig an error, then, it's possible to follow the white rabbit
         1/0
-    elif line != None:
-        writeln('File "%s", line %d, error : %s'%(line.getFname(), line.getNum(), message))
-        writeln(line.getText())
     else:
-        writeln('Error : %s'%(message))
-    #~ sys.exit(1)
+        if not SILENT:
+            if line != None:
+                writeln('File "%s", line %d, error : %s'%(line.getFname(), line.getNum(), message))
+                writeln(line.getText())
+            else:
+                writeln('Error : %s'%(message))
 
 def buildName(old_name, new_name):
     fname = os.path.splitext(os.path.basename(old_name))[0]
@@ -786,6 +792,7 @@ class ASSEMBLER():
         mode = RELATIVE
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[2:], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -800,8 +807,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeImplied(self, line, pc):
         words = line.getWords()
@@ -811,12 +820,15 @@ class ASSEMBLER():
         mode = IMPLIED
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             # all prerequisites are good, let's solve
             words[1].set(opcode)
             line.setBytes((opcode,))
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeAccumulator(self, line, pc):
         words = line.getWords()
@@ -826,13 +838,16 @@ class ASSEMBLER():
         mode = ACCUMULATOR
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             # all prerequisites are good, let's solve
             words[1].set(opcode)
             del words[2]
             line.setBytes((opcode,))
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeImmediate(self, line, pc):
         words = line.getWords()
@@ -842,6 +857,7 @@ class ASSEMBLER():
         mode = IMMEDIATE
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[3:], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -854,8 +870,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeIndirectx(self, line, pc):
         words = line.getWords()
@@ -865,6 +883,7 @@ class ASSEMBLER():
         mode = INDIRECTX
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[3:-3], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -877,8 +896,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeIndirecty(self, line, pc):
         words = line.getWords()
@@ -888,6 +909,7 @@ class ASSEMBLER():
         mode = INDIRECTY
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[3:-3], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -900,8 +922,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeIndirect(self, line, pc):
         words = line.getWords()
@@ -911,6 +935,7 @@ class ASSEMBLER():
         mode = INDIRECT
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[3:-1], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -923,8 +948,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeAbsolute(self, line, pc):
         words = line.getWords()
@@ -934,6 +961,7 @@ class ASSEMBLER():
         mode = ABSOLUTE
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[2:], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -946,8 +974,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeAbsolutex(self, line, pc):
         words = line.getWords()
@@ -957,6 +987,7 @@ class ASSEMBLER():
         mode = ABSOLUTEX
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[2:-2], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -969,8 +1000,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeAbsolutey(self, line, pc):
         words = line.getWords()
@@ -980,6 +1013,7 @@ class ASSEMBLER():
         mode = ABSOLUTEY
         opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
+            line_size = getInstructionSize(opcode)
             value = self.solveExpression(words[2:-2], info)
             if value != None and pc.isOK():
                 # all prerequisites are good, let's solve
@@ -992,8 +1026,10 @@ class ASSEMBLER():
                     while len(words) > 3:
                         del words[-1]
         # event if it's not solved, let's compute pc for the next lines
+        else:
+            line_size = 0
         line.setAddress(pc.get())
-        pc.add(getInstructionSize(opcode))
+        pc.add(line_size)
 
     def computeAffectation(self, line, pc):
         words = line.getWords()
@@ -1288,27 +1324,30 @@ class ASSEMBLER():
     def computeOrg(self, line, pc):
         pass
 
-    def solveExpression(self, words, info):
+    def solveExpression(self, words, info, log=False):
         labels = []
         for word in words:
             if word.isSolved():
                 labels.append(str(word.get()))
             else:
                 labels.append(str(word.getLabel()))
-        #~ write("%05d %s >>> "%(info.getNum(), info.getText()))
+        if log:
+            write("%05d %s >>> "%(info.getNum(), info.getText()))
         expression = CHAR_SPACE.join(labels)
-        #~ write("%s >>> "%expression)
+        if log:
+            write("%s >>> "%expression)
 
         try:
             result = eval(expression)
         except:
             result = None
         
-        #~ writeln(result)
+        if log:
+            writeln(result)
         return result
 
     def solveString(self, word, info):
-        #try:
+        try:
             text = eval(word.get())
             if type(text) == int:
                 printWarning("syntax error (perhaps an unexpected value instead of a string)", info)
@@ -1318,9 +1357,9 @@ class ASSEMBLER():
                 return None
             else:
                 return tuple([ord(car) for car in text])
-        #except:
-        #    printError("syntax error", info)
-        #    return None
+        except:
+            printError("syntax error", info)
+            return None
 
     def setSolveExpressionFp(self, fp):
         self.__solver_fp = fp
