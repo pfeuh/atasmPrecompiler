@@ -425,6 +425,38 @@ class BUFFER():
 
 if __name__ == "__main__":
 
+    def test_solveExpression():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 0
+        
+        words = []
+        words.append(asm.WORD("toto", asm.TYPE_VARIABLE, value=3))
+        words.append(asm.WORD("+", asm.TYPE_PONCTUATION, value='+'))
+        words.append(asm.WORD("titi", asm.TYPE_VARIABLE, value=4))
+        assert assembler.solveExpression(words, info) == 7
+        
+        word = asm.WORD('toto', asm.TYPE_VARIABLE, value='"azerty"')
+        assert assembler.solveString(word, info) == (97, 122, 101, 114, 116, 121)
+
+        word = asm.WORD('toto', asm.TYPE_VARIABLE, value='"abcde\\n"')
+        assert assembler.solveString(word, info) == (97, 98, 99, 100, 101, 10)
+
+        value='"µ\\x003345"'
+        word = asm.WORD('toto', asm.TYPE_VARIABLE, value = value)
+        assert assembler.solveString(word, info) == (194, 181, 0, 51, 51, 52, 53)
+
+        value='123'
+        word = asm.WORD('toto', asm.TYPE_VARIABLE, value = value)
+        assert assembler.solveString(word, info) == (123, )
+
     def test_precompiler():
         import precompiler as pco
         write = pco.write
@@ -612,7 +644,7 @@ if __name__ == "__main__":
                 ut_mode    = tables6502.MODES[x].upper()
             
             if (ref_opcode != ut_opcode) or (ref_mode != ut_mode):
-             raise Exception("Difference: %0X %s %-12s %s %-12s"%(x, ref_opcode, ref_mode, ut_opcode, ut_mode))
+                raise Exception("Difference: %0X %s %-12s %s %-12s"%(x, ref_opcode, ref_mode, ut_opcode, ut_mode))
 
     def test_getOpcodeValue():
         # with a mnemonic and an addressing mode, getOpcodeValue return the matching opcode
@@ -690,6 +722,33 @@ if __name__ == "__main__":
         assert word3.get() == 369
         assert word2.get() == None
 
+        fname = "utest/empty.asm"
+        makeFile(fname, [' .byte 33,34,35,36,37'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+        
+        assembler = asm.ASSEMBLER(params) 
+        line = assembler.getAsmLine(0)
+        words = line.getWords()
+        assert len(words) == 11
+        assert getLineWord(assembler, 0, 10, strict=False).getLabel() == '37'
+        
+        # testing automatic deletion of last word if it's a comma
+        fname = "utest/empty.asm"
+        makeFile(fname, [' .byte 33,34,35,36,37 ,'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+        
+        assembler = asm.ASSEMBLER(params) 
+        line = assembler.getAsmLine(0)
+        words = line.getWords()
+        assert len(words) == 11
+        assert getLineWord(assembler, 0, 10, strict=False).getLabel() == '37'
+        
+        
+ 
     def test_AsmLine_hasLabel():
         import assembler6502 as asm
         
@@ -1020,8 +1079,219 @@ if __name__ == "__main__":
         assert assembler.getAsmLine(0).getWords()[1].get() == 48
         assert len(assembler.getAsmLine(0).getWords()) == 2
 
+    def test_computeByte():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' toto = 6','  .byte 1, 2, 3, ', '  .byte 4, 5, toto, ', ' .byte 7, 8, toto + 3,', ' .byte 10, 11, titi + 3,', ' .byte 1234', ' .byte 14'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 7
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 7
+        assert len(lines[2].getWords()) == 7
+        assert len(lines[3].getWords()) == 9
+
+        assembler.assemble()
+        
+        assert lines[1].getBytes() == (1,2,3)
+        assert lines[2].getBytes() == (4,5,6)
+        assert lines[3].getBytes() == (7,8,9)
+        assert lines[4].getBytes() == []
+
+        assert lines[1].getAddress() == 1536
+        assert lines[2].getAddress() == 1539
+        assert lines[3].getAddress() == 1542
+        assert lines[4].getAddress() == 1545
+        assert lines[5].getAddress() == 1548
+        assert lines[6].getAddress() == 1549
+
+    def test_computeWord():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' toto = 6','  .word 1, 2, 3, ', '  .word 4, 5, toto, ', ' .word 7, 8, toto + 3,', ' .word 10, 11, titi + 3,', ' .word 1234', ' .word 14'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 7
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 7
+        assert len(lines[2].getWords()) == 7
+        assert len(lines[3].getWords()) == 9
+
+        assembler.assemble()
+        
+        assert lines[1].getBytes() == (1,0,2,0,3,0)
+        assert lines[2].getBytes() == (4,0,5,0,6,0)
+        assert lines[3].getBytes() == (7,0,8,0,9,0)
+        assert lines[4].getBytes() == []
+
+        assert lines[1].getAddress() == 1536
+        assert lines[2].getAddress() == 1542
+        assert lines[3].getAddress() == 1548
+        assert lines[4].getAddress() == 1554
+        assert lines[5].getAddress() == 1560
+        assert lines[6].getAddress() == 1562
+
+    def test_computeDbyte():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' toto = 6','  .dbyte 1, 2, 3, ', '  .dbyte 4, 5, toto, ', ' .dbyte 7, 8, toto + 3,', ' .dbyte 10, 11, titi + 3,', ' .dbyte 1234', ' .dbyte 14'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 7
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 7
+        assert len(lines[2].getWords()) == 7
+        assert len(lines[3].getWords()) == 9
+
+        assembler.assemble()
+        
+        assert lines[1].getBytes() == (0,1,0,2,0,3)
+        assert lines[2].getBytes() == (0,4,0,5,0,6)
+        assert lines[3].getBytes() == (0,7,0,8,0,9)
+        assert lines[4].getBytes() == []
+
+        assert lines[1].getAddress() == 1536
+        assert lines[2].getAddress() == 1542
+        assert lines[3].getAddress() == 1548
+        assert lines[4].getAddress() == 1554
+        assert lines[5].getAddress() == 1560
+        assert lines[6].getAddress() == 1562
+
+    def test_computeString():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' toto = 6','  .string "abc\\x00def"', '  .string "0123456\\n"', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 4
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 3
+        assert len(lines[2].getWords()) == 3
+        assert len(lines[3].getWords()) == 2
+
+        assembler.assemble()
+
+        assert lines[1].getBytes() == (97, 98, 99, 0, 100, 101, 102, 0)
+        assert lines[2].getBytes() == (48, 49, 50, 51, 52, 53, 54, 10, 0)
+        assert lines[1].getAddress() == 0x600
+        assert lines[2].getAddress() == 0x608
+        assert lines[3].getAddress() == 0x611
+
+    def test_computeChArray():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' toto = 6','  .ch_array "abc\\x00def"', '  .ch_array "0123456\\n"', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 4
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 3
+        assert len(lines[2].getWords()) == 3
+        assert len(lines[3].getWords()) == 2
+
+        assembler.assemble()
+
+        assert lines[1].getBytes() == (97, 98, 99, 0, 100, 101, 102)
+        assert lines[2].getBytes() == (48, 49, 50, 51, 52, 53, 54, 10)
+        assert lines[1].getAddress() == 0x600
+        assert lines[2].getAddress() == 0x607
+        assert lines[3].getAddress() == 0x60f
+
+    def test_computeDbs():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' a0 = b', ' .dbs 3', ' .dbs 4', ' .dbs 5', ' .dbs 6', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 3
+        assert len(lines[2].getWords()) == 3
+        assert len(lines[3].getWords()) == 3
+        assert len(lines[4].getWords()) == 3
+
+        assembler.assemble()
+
+        assert lines[1].getBytes() == (0,0,0)
+        assert lines[2].getBytes() == (0,0,0,0)
+        assert lines[3].getBytes() == (0,0,0,0,0)
+        assert lines[4].getBytes() == (0,0,0,0,0,0)
+        assert lines[1].getAddress() == 0x600
+        assert lines[2].getAddress() == 0x603
+        assert lines[3].getAddress() == 0x607
+        assert lines[4].getAddress() == 0x60c
+        assert lines[5].getAddress() == 0x612
+
+    def test_computeDws():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' a0 = b', ' .dws 3', ' .dws 4', ' .dws 5', ' .dws 6', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 6
+        lines = assembler.getAsmLines()
+        
+        assert len(lines[0].getWords()) == 4
+        assert len(lines[1].getWords()) == 3
+        assert len(lines[2].getWords()) == 3
+        assert len(lines[3].getWords()) == 3
+        assert len(lines[4].getWords()) == 3
+
+        assembler.assemble()
+
+        assert lines[1].getBytes() == (0,0,0,0,0,0)
+        assert lines[2].getBytes() == (0,0,0,0,0,0,0,0)
+        assert lines[3].getBytes() == (0,0,0,0,0,0,0,0,0,0)
+        assert lines[4].getBytes() == (0,0,0,0,0,0,0,0,0,0,0,0)
+        assert lines[1].getAddress() == 0x600
+        assert lines[2].getAddress() == 0x606
+        assert lines[3].getAddress() == 0x60e
+        assert lines[4].getAddress() == 0x618
+        assert lines[5].getAddress() == 0x624
+
     #~ fpDebug = open("utest/debug.txt", "w")
     test_precompiler()
+    test_solveExpression()
     test_tables()
     test_getOpcodeValue()
     test_createAsmLines()
@@ -1040,6 +1310,13 @@ if __name__ == "__main__":
     test_computeAbsolute()
     test_computeAbsolutex()
     test_computeAbsolutey()
+    test_computeByte()
+    test_computeWord()
+    test_computeDbyte()
+    test_computeString()
+    test_computeChArray()
+    test_computeDbs()
+    test_computeDws()
     #~ test_compiler()
     
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

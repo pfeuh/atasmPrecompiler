@@ -21,6 +21,7 @@ if 1:
     CHAR_TILD = '~'
     CHAR_LF = '\n'
     CHAR_EQUAL = '='
+    CHAR_COMMA = ','
     
     DEFAULT_PC_VALUE = 0x200
 
@@ -35,6 +36,9 @@ if 1:
     KEYWORD_NMI = "nmi"
     KEYWORD_SOURCE_END = "source_end"
     REQUIRED_LABELS = (KEYWORD_SOURCE_START, KEYWORD_MAIN, KEYWORD_IRQ, KEYWORD_NMI,KEYWORD_SOURCE_END)
+
+    SIZEOF_BYTE = 1
+    SIZEOF_WORD = 2
 
     FIRST_CHAR = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_"
     OTHER_CHAR = FIRST_CHAR + "0123456789"
@@ -58,9 +62,10 @@ if 1:
     CMD_DBYTE = '.dbyte'
     CMD_STRING = '.string'
     CMD_CH_ARRAY = '.ch_array'
-    CMD_DS = '.ds'
+    CMD_DBS = '.dbs'
+    CMD_DWS = '.dws'
     CMD_ORG = '*'
-    DIRECTIVES = (CMD_BYTE, CMD_WORD, CMD_DBYTE, CMD_STRING, CMD_CH_ARRAY, CMD_DS, CMD_ORG)
+    DIRECTIVES = (CMD_BYTE, CMD_WORD, CMD_DBYTE, CMD_STRING, CMD_CH_ARRAY, CMD_DBS, CMD_DWS, CMD_ORG)
 
     REGISTERS = ('x', 'y', 'X', 'Y', 'a', 'A')
     KEYWORDS = DIRECTIVES + PONCTUATION + REGISTERS
@@ -251,19 +256,19 @@ def diskSave(fname=None, hook=placebo, mode = "wb"):
 def getInstructionSize(opcode):
     return CODE_SIZES[opcode]
 
-def formatData(items, datatype, word, pc, info):
+def xx__formatData(items, datatype, word, pc, info):
     ret_lst = []
     
-    if datatype == CMD_DS:
+    if datatype in (CMD_DBS, CMD_DWS):
         if type(items) == int:
             items = [0] * items
         else:
-            printError("%s command accepts only 1 parameter"%CMD_DS, info)
+            printError("%s command accepts only 1 parameter"%datatype, info)
     if datatype in ('<', '>'):
         if type(items) == int:
             items = (items,)
         else:
-            printError("%s command accepts only 1 parameter"%CMD_DS, info)
+            printError("%s command accepts only 1 parameter"%datatype, info)
     else:
         if type(items) == int:
             items = (items,)
@@ -292,7 +297,7 @@ def formatData(items, datatype, word, pc, info):
                     ret_lst.append(item & 255)
             elif datatype in (CMD_STRING, CMD_CH_ARRAY):
                 ret_lst.append(item)
-            elif datatype == CMD_DS:
+            elif datatype == CMD_DBS:
                 ret_lst.append(0)
             
     if datatype == CMD_STRING:
@@ -304,6 +309,13 @@ def formatData(items, datatype, word, pc, info):
         pc.add(len(result))
     return result
 
+def countItems(words, item, line):
+    count = 0
+    for word in words:
+        if word.getLabel() == item:
+            count += 1
+    return count
+    
 class PROGRAM_COUNTER():
     def __init__(self, value=DEFAULT_PC_VALUE):
         self.__PC = value
@@ -540,10 +552,6 @@ class ASM_LINE():
 class ASSEMBLER():
     const_num = 0
     
-    def getNewConstantName(self):
-        ASSEMBLER.const_num += 1
-        return "const_%04x"%ASSEMBLER.const_num
-        
     def __init__(self, params, solver_fp=None):
         # arguments stuff
         self.__params = params
@@ -561,12 +569,11 @@ class ASSEMBLER():
 
         # let's go!
         self.createAsmLines(self.__fname)
-        #~ for x in range(10):
-            #~ self.assemble()
-        #~ self.debugStr()
-        #~ self.computeOpcodes()
-        #~ self.computeAffectations()
     
+    def getNewConstantName(self):
+        ASSEMBLER.const_num += 1
+        return "const_%04x"%ASSEMBLER.const_num
+        
     def getSourceLines(self):
         return self.__source_lines
         
@@ -579,31 +586,7 @@ class ASSEMBLER():
         
     def debugStr(self):
         otext = EMPTY_STR
-        #~ print self.getWord("rts")
-        #~ print self.__asm_lines[31]
-        #~ sys.exit(0)
-        
-        #~ for line in self.__asm_lines:
-            #~ print line.isSolved(), line.getText()
-        #~ sys.exit(0)
-        
-        #~ for line in self.__asm_lines:
-            #~ for word in line.getWords():
-                #~ if word.getLabel() == 'rts':
-                    #~ write(line)
-                    #~ write(word)
-        #~ sys.exit(0)
-        
         otext += self.getStatText() + CHAR_SPACE
-        #~ for line in self.__asm_lines:
-            #~ solved_text = "."
-            #~ if line.isSolved():
-                #~ solved_text = "X"
-            #~ otext += "%06d %s "%(line.getLine().getNum(), solved_text)
-            #~ for word in line.getWords():
-                #~ otext += word.debugStr() + CHAR_SPACE
-            #~ otext += CHAR_LF
-        #~ otext += self.getWordsStr()
         return otext
 
     def getWord(self, label, strict=False):
@@ -715,6 +698,13 @@ class ASSEMBLER():
                     if word.getType() == TYPE_VARIABLE:
                         self.__words[label] = word
                 line.addWord(word)
+
+            if line.getWords()[-1].getLabel() == CHAR_COMMA:
+                del line.getWords()[-1]
+
+            if len(line.getWords()) >= 3:
+                if line.getWords()[2].getLabel() == CHAR_COMMA:
+                    printError("unexpected comma", info)
                 
     def assemble(self):
         # this is only one pass, all may not be solved with it
@@ -1015,10 +1005,7 @@ class ASSEMBLER():
             while len(words) > 2:
                 del words[-1]
 
-    def computeDirective(self, line, pc):
-        return
-
-    def computeWordSplitter(self, line, pc):
+    def xx__computeWordSplitter(self, line, pc):
         # '<' means use most significant byte
         # '>' means use least significant byte
         info = line.getLine()
@@ -1082,222 +1069,10 @@ class ASSEMBLER():
 
         return word
 
-    def XX__computeOpcode(self, line, pc):
-        if pc.isOK():
-            line.setPC(pc.get())
-        
-        words = line.getWords()
-        nb_words = len(words)
-        info = line.getLine()
-        
-        if nb_words < 2:
-            printLink("", info)
-            raise Exception("unexpected end of line testing opcode\n")
-
-        word = words[1]
-        opcode = word.getLabel().lower()
-        solved = False
-
-        if word.getType() != TYPE_OPCODE:
-            printLink("", info)
-            raise Exception("unexpected line without opcode\n")
-            
-        if word.isSolved():
-            return
-            
-# mode Relative
-        if opcode in RELATIVE_OPCODES:
-            value = getOpcodeValue(opcode, RELATIVE, line)
-            word.set(value)
-            pc.add(getInstructionSize(value))
-            solved = True
-
-# mode Implied
-        if not solved:
-            if opcode in IMPLIED_OPCODES:
-                value = getOpcodeValue(opcode, IMPLIED, line)
-                word.set(value)
-                pc.add(getInstructionSize(value))
-                solved = True
-        
-        if not solved:
-            # all opcodes without operand are done: finaly it's a bad one 
-            if nb_words == 2:
-                printError("illegal opcode '%s'"%(opcode), info)
-                
-# mode Accumulator
-        if not solved:
-            if nb_words == 3:
-                if words[2].getLabel().lower() == "a":
-                    value = getOpcodeValue(opcode, ACCUMULATOR, line)
-                    word.set(value)
-                    pc.add(getInstructionSize(value))
-                    del words[2]
-                    solved = True
-# mode Immediate
-        if not solved:
-            if nb_words >= 4:
-                if words[2].getLabel() == "#":
-                    value = getOpcodeValue(opcode, IMMEDIATE, line)
-                    word.set(value)
-                    pc.add(getInstructionSize(value))
-                    del words[2]
-                    solved = True
-# mode Indirect,X
-        if not solved:
-            if nb_words >= 7:
-                if words[-1].getLabel() == ")":
-                    if words[-2].getLabel().lower() == "x":
-                        if words[-3].getLabel() == ",":
-                            if words[2].getLabel() == "(":
-                                value = getOpcodeValue(opcode, INDIRECTX, line)
-                                word.set(value)
-                                pc.add(getInstructionSize(value))
-                                del words[2]
-                                del words[-1]
-                                del words[-1]
-                                del words[-1]
-                                solved = True
-# mode Indirect,Y
-        if not solved:
-            if nb_words >= 7:
-                if words[-1].getLabel().lower() == "y":
-                    if words[-2].getLabel() == ",":
-                        if words[-3].getLabel() == ")":
-                            if words[2].getLabel() == "(":
-                                value = getOpcodeValue(opcode, INDIRECTY, line)
-                                word.set(value)
-                                pc.add(getInstructionSize(value))
-                                del words[2]
-                                del words[-1]
-                                del words[-1]
-                                del words[-1]
-                                solved = True
-
-# mode Absolute,X & Zero Page,X - choice done when size of operand will be known
-        if not solved:
-            if nb_words >= 7:
-                if words[-1].getLabel().lower() == "x":
-                    if words[-2].getLabel().lower() == ",":
-                            if words[2].getLabel() != "(":
-                                value = getOpcodeValue(opcode, ABSOLUTEX, line)
-                                word.set(value)
-                                pc.add(getInstructionSize(value))
-                                del words[2]
-                                del words[-1]
-                                del words[-2]
-                                solved = True
-
-# mode Absolute,Y  & Zero Page,Y - choice done when size of operand will be known
-        if not solved:
-            if nb_words >= 7:
-                if words[-1].getLabel().lower() == "y":
-                    if words[-2].getLabel().lower() == ",":
-                            if words[2].getLabel() != "(":
-                                value = getOpcodeValue(opcode, ABSOLUTEY, line)
-                                word.set(value)
-                                pc.add(getInstructionSize(value))
-                                del words[2]
-                                del words[-1]
-                                del words[-2]
-                                solved = True
-
-# mode Indirect
-        if not solved:
-            if nb_words >= 5:
-                if words[-1].getLabel() == ")":
-                    if words[2].getLabel() == "(":
-                        value = getOpcodeValue(opcode, INDIRECT, line)
-                        word.set(value)
-                        pc.add(getInstructionSize(value))
-                        del words[2]
-                        del words[-1]
-                        solved = True
-
-# mode Absolute & Zero Page - choice will be done when size of operand will be known
-        if not solved:
-            value = getOpcodeValue(opcode, ABSOLUTE, line)
-            word.set(value)
-            pc.add(getInstructionSize(value))
-            solved = True
-        if not solved:
-            printWarning("unsolved opcode %s"%opcode, line)
-
-    def computeOpcodeData(self, line, pc):
-        if pc.isOK():
-            info = line.getLine()
-            words = line.getWords()
-            if len(words) >= 2:
-                item = words[1]
-                #if item.isSolved():
-                if 1:
-                    
-                    if item.getType() == TYPE_OPCODE:
-                        opcode = item.get()
-                        mode = MODES[opcode]
-                        mnemo = item.getLabel()
-                        if mode in (IMPLIED, ACCUMULATOR):
-                            line.setBytes((opcode,))
-                            return 
-                        if len(words) == 3:
-                            if words[2].isSolved():
-                                data = words[2].get()
-                                if mode in (ABSOLUTE, ABSOLUTEY,ABSOLUTEX):
-                                    if data < 256:
-                                        #change the mode, use the page zero one
-                                        if mode == ABSOLUTE:
-                                            new_opcode = getOpcodeValue(mnemo, ZEROPAGE, info, strict=False)
-                                            #~ new_opcode = getOpcodeValue(mnemo, ZEROPAGE, info)
-                                            if new_opcode != None:
-                                                item.set(opcode)
-                                                line.setBytes((opcode,data))
-                                            else:
-                                                line.setBytes((opcode,data & 25, data / 256))                                                
-                                        elif mode == ABSOLUTEX:
-                                            opcode = getOpcodeValue(mnemo, ZEROPAGEX, info)
-                                            item.set(opcode)
-                                            line.setBytes((opcode,data))
-                                        elif mode == ABSOLUTEY:
-                                            opcode = getOpcodeValue(mnemo, ZEROPAGEY, info)
-                                            item.set(opcode)
-                                            line.setBytes((opcode,data))
-                                        return
-                                    else:
-                                        #keep the mode, use the absolute one
-                                        if mode == ABSOLUTE:
-                                            line.setBytes((opcode,data & 255, data/ 256))
-                                        elif mode == ABSOLUTEX:
-                                            line.setBytes((opcode,data & 255, data/ 256))
-                                        elif mode == ABSOLUTEY:
-                                            line.setBytes((opcode,data & 255, data/ 256))
-                                        return
-                        if len(words) == 4:
-                            if words[2].get() == "#":
-                                if words[3].isSolved():
-                                    data = words[3].get()
-                                    if not words[3].isByte():
-                                        printError("too big immediate value (%04x)"%data, info)
-                                    else:
-                                        line.setBytes((opcode,data))
-                                        
-                    
-
-#~ INDIRECTX = 'IndirectX'
-#~ IMMEDIATE = 'Immediate'
-#~ RELATIVE = 'Relative'
-#~ INDIRECTY = 'IndirectY'
-#~ INDIRECT = 'Indirect'
-                
-                
-        
-        
-        
-        
-    
     def computeAffectations(self, line):
         # solve some affectations
         words = line.getWords()
-        if len(words) == 4:
+        if len(words) >= 4:
             if words[2].getLabel() == CHAR_EQUAL:
                 if words[3].isVariable():
                     if words[3].isSolved():
@@ -1305,31 +1080,213 @@ class ASSEMBLER():
                         del words[-1]
                         del words[-1]
 
-    def computeDirectives(self, line, pc):
-        # solve some keywords
-        info = line.getLine()
+    def computeDirective(self, line, pc):
         words = line.getWords()
         nb_words = len(words)
-        command = words[1]
-
-        if command.getType() != TYPE_DIRECTIVE:
-            return
-
-        #~ if command.isSolved():
-            #~ return
-
-        label = command.getLabel()
+        info = line.getLine()
         
-        if label in DIRECTIVES:
-            result = self.solveExpression(words[2:], info)
-            if result != None:
-                bytes = formatData(result, label, command, pc, info)
-                line.setWords(words[:2])
-                #~ writeln("-> %s"%str(bytes), fp=self.__solver_fp)
-                #~ words[1].set(bytes)
+        word = words[1]
+        if word.isSolved():
+            return
+            
+        label = word.getLabel()
+        
+        if label == CMD_BYTE:
+            self.computeByte(line, pc)
+        elif label == CMD_WORD:
+            self.computeWord(line, pc)
+        elif label == CMD_DBYTE:
+            self.computeDbyte(line, pc)
+        elif label == CMD_STRING:
+            self.computeString(line, pc)
+        elif label == CMD_CH_ARRAY:
+            self.computeChArray(line, pc)
+        elif label == CMD_DBS:
+            self.computeDbs(line, pc)
+        elif label == CMD_DWS:
+            self.computeDws(line, pc)
+        elif label == CMD_ORG:
+            self.computeOrg(line, pc)
+        return
+        
+    def computeByte(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        bytes = self.solveExpression(words[2:], info)
+        if bytes != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            if type(bytes) == int:
+                bytes = (bytes,)
+            for index, byte in enumerate(bytes):
+                if byte < 0 or byte > 255:
+                    printError("byte #%d value $%04x out of range"%(index+1, byte), info)
             else:
-                writeln("-> None", fp=self.__solver_fp)
-            writeln("-"*40, fp=self.__solver_fp)
+                words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+                line.setBytes(bytes)
+                nb_items = len(bytes)
+                while len(words) > 3:
+                    del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_items = countItems(words[2:], CHAR_COMMA, line) + 1
+        line.setAddress(pc.get())
+        pc.add(nb_items * SIZEOF_BYTE)
+
+    def computeWord(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        integers = self.solveExpression(words[2:], info)
+        if integers != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            if type(integers) == int:
+                integers = (integers,)
+            for index, integer in enumerate(integers):
+                if integer < 0 or integer > 65535:
+                    printError("word #%d value $%04x out of range"%(index+1, integer), info)
+            else:
+                bytes = []
+                for integer in integers:
+                    bytes.append(integer & 255)
+                    bytes.append(integer / 256)
+                words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+                line.setBytes(tuple(bytes))
+                nb_items = len(integers)
+                while len(words) > 3:
+                    del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_items = countItems(words[2:], CHAR_COMMA, line) + 1
+        line.setAddress(pc.get())
+        pc.add(nb_items * SIZEOF_WORD)
+
+    def computeDbyte(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        integers = self.solveExpression(words[2:], info)
+        if integers != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            if type(integers) == int:
+                integers = (integers,)
+            for index, integer in enumerate(integers):
+                if integer < 0 or integer > 65535:
+                    printError("word #%d value $%04x out of range"%(index+1, integer), info)
+            else:
+                bytes = []
+                for integer in integers:
+                    bytes.append(integer / 256)
+                    bytes.append(integer & 255)
+                words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+                line.setBytes(tuple(bytes))
+                nb_items = len(integers)
+                while len(words) > 3:
+                    del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_items = countItems(words[2:], CHAR_COMMA, line) + 1
+        line.setAddress(pc.get())
+        pc.add(nb_items * SIZEOF_WORD)
+
+    def computeString(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        bytes = self.solveString(words[2], info)
+        
+        if bytes != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            bytes = list(bytes)
+            bytes.append(0)
+            bytes = tuple(bytes)
+            if len(bytes):
+                for byte in bytes[:-1]:
+                    printWarning('unexpected zero byte in string', info)
+            words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+            line.setBytes(tuple(bytes))
+            nb_items = len(bytes)
+            while len(words) > 3:
+                del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_items = countItems(words[2:], CHAR_COMMA, line) + 1
+        line.setAddress(pc.get())
+        pc.add(nb_items * SIZEOF_BYTE)
+
+    def computeChArray(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        bytes = self.solveString(words[2], info)
+        
+        if bytes != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+            line.setBytes(tuple(bytes))
+            nb_items = len(bytes)
+            while len(words) > 3:
+                del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_items = countItems(words[2:], CHAR_COMMA, line) + 1
+        line.setAddress(pc.get())
+        pc.add(nb_items * SIZEOF_BYTE)
+
+    def computeDbs(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        nb_bytes = self.solveExpression(words[2:], info)
+        if nb_bytes != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            if type(nb_bytes) != int:
+                printError("syntax error"%(), info)
+                nb_bytes = 0
+            elif nb_bytes < 1 or nb_bytes > 65535:
+                printError("value $%04x out of range"%nb_bytes, info)
+                nb_bytes = 0
+            else:
+                bytes = [0] * nb_bytes
+                bytes = tuple(bytes)
+                words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+                line.setBytes(tuple(bytes))
+                while len(words) > 3:
+                    del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_bytes = 0
+        line.setAddress(pc.get())
+        pc.add(nb_bytes * SIZEOF_BYTE)
+
+    def computeDws(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        nb_words = self.solveExpression(words[2:], info)
+        if nb_words != None and pc.isOK():
+            # all prerequisites are good, let's solve
+            if type(nb_words) != int:
+                printError("syntax error"%(), info)
+                nb_words = 0
+            elif nb_words < 1 or nb_words > 32767:
+                printError("value $%04x out of range"%nb_words, info)
+                nb_words = 0
+            else:
+                bytes = [0] * nb_words * SIZEOF_WORD
+                bytes = tuple(bytes)
+                words[2] = WORD(self.getNewConstantName(), TYPE_CONSTANT, bytes)
+                line.setBytes(tuple(bytes))
+                while len(words) > 3:
+                    del words[-1]
+        # event if it's not solved, let's compute pc for the next lines
+        else:
+            nb_words = 0
+        line.setAddress(pc.get())
+        pc.add(nb_words * SIZEOF_WORD)
+
+    def computeOrg(self, line, pc):
+        pass
 
     def solveExpression(self, words, info):
         labels = []
@@ -1350,23 +1307,24 @@ class ASSEMBLER():
         #~ writeln(result)
         return result
 
+    def solveString(self, word, info):
+        #try:
+            text = eval(word.get())
+            if type(text) == int:
+                printWarning("syntax error (perhaps an unexpected value instead of a string)", info)
+                return (text & 0xff, )
+            elif type(text) != str:
+                printError("syntax error (perhaps an unexpected non-ascii byte)", info)
+                return None
+            else:
+                return tuple([ord(car) for car in text])
+        #except:
+        #    printError("syntax error", info)
+        #    return None
+
     def setSolveExpressionFp(self, fp):
         self.__solver_fp = fp
         
-    def getWordsStr(self, type_list=None):
-        if type_list == None:
-            type_list = WORD_TYPES
-        otext = EMPTY_STR
-        words = self.getWords()
-        keys = words.keys()
-        keys.sort()
-        
-        for key in keys:
-            item = self.getWords()[key]
-            if item.getType() in type_list:
-                otext += item.debugStr() + CHAR_LF
-        return otext
-
     def getCodeText(self):
         otext = EMPTY_STR
         for line in self.__asm_lines:
@@ -1700,7 +1658,7 @@ if __name__ == "__main__":
     if ap.get('-nb_cols') == False:
         ap.set('-nb_cols', 16)
     if ap.get('-ifname') == False:
-        printError("'-ifname' if mandatory")
+        printError("'-ifname' is mandatory")
 
     ##################
     #                #
