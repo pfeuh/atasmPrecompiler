@@ -262,9 +262,15 @@ def getInstructionSize(opcode):
 
 def countItems(words, item, line):
     count = 0
-    for word in words:
-        if word.getLabel() == item:
-            count += 1
+    
+    if words[-1].getLabel() == CHAR_COMMA:
+        for word in words[:-1]:
+            if word.getLabel() == item:
+                count += 1
+    else:
+        for word in words:
+            if word.getLabel() == item:
+                count += 1
     return count
     
 def getModesByMnemonic(mnemonic):
@@ -325,6 +331,32 @@ def getNewConstantName():
     global VAR_NUM
     VAR_NUM += 1
     return "const_%04x"%VAR_NUM
+
+def solveArray(words, info, log=False):
+    labels = []
+    
+    items_array = []
+    
+    item = []
+    for word in words:
+        if word.getLabel() != CHAR_COMMA:
+            item.append(word)
+        else:
+            result = solveExpression(item, info)
+            if result != None:
+                items_array.append(result)
+                item = []
+            else:
+                return None
+    if item != []:
+            result = solveExpression(item, info)
+            if result != None:
+                items_array.append(result)
+                item = []
+            else:
+                return None
+            
+    return tuple(items_array)
 
 def solveExpression(words, info, log=False):
     labels = []
@@ -857,8 +889,8 @@ class ASSEMBLER():
                         self.__words[label] = word
                 line.addWord(word)
 
-            if line.getWords()[-1].getLabel() == CHAR_COMMA:
-                del line.getWords()[-1]
+            #~ if line.getWords()[-1].getLabel() == CHAR_COMMA:
+                #~ del line.getWords()[-1]
 
             if len(line.getWords()) >= 3:
                 if line.getWords()[2].getLabel() == CHAR_COMMA:
@@ -1209,7 +1241,8 @@ class ASSEMBLER():
         words = line.getWords()
         info = line.getLine()
         
-        bytes = solveExpression(words[2:], info)
+        #~ bytes = solveExpression(words[2:], info)
+        bytes = solveArray(words[2:], info)
         if bytes != None and pc.isOK():
             # all prerequisites are good, let's solve
             if type(bytes) == int:
@@ -1233,7 +1266,7 @@ class ASSEMBLER():
         words = line.getWords()
         info = line.getLine()
         
-        integers = solveExpression(words[2:], info)
+        integers = solveArray(words[2:], info)
         if integers != None and pc.isOK():
             # all prerequisites are good, let's solve
             if type(integers) == int:
@@ -1261,7 +1294,7 @@ class ASSEMBLER():
         words = line.getWords()
         info = line.getLine()
         
-        integers = solveExpression(words[2:], info)
+        integers = solveArray(words[2:], info)
         if integers != None and pc.isOK():
             # all prerequisites are good, let's solve
             if type(integers) == int:

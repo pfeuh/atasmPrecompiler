@@ -764,7 +764,7 @@ if __name__ == "__main__":
         assembler = asm.ASSEMBLER(params) 
         line = assembler.getAsmLine(0)
         words = line.getWords()
-        assert len(words) == 11
+        assert len(words) == 12
         assert getLineWord(assembler, 0, 10, strict=False).getLabel() == '37'
         
         
@@ -1109,7 +1109,7 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
-        makeFile(fname, [' toto = 6','  .byte 1, 2, 3, ', '  .byte 4, 5, toto, ', ' .byte 7, 8, toto + 3,', ' .byte 10, 11, titi + 3,', ' .byte 1234', ' .byte 14'])
+        makeFile(fname, [' toto = 6','  .byte >256, >512, >768, ', '  .byte 4, 5, toto, ', ' .byte 7, 8, toto + 3,', ' .byte 10, 11, titi + 3,', ' .byte 1234', ' .byte 14'])
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
@@ -1119,9 +1119,9 @@ if __name__ == "__main__":
         lines = assembler.getAsmLines()
         
         assert len(lines[0].getWords()) == 4
-        assert len(lines[1].getWords()) == 7
-        assert len(lines[2].getWords()) == 7
-        assert len(lines[3].getWords()) == 9
+        assert len(lines[1].getWords()) == 11
+        assert len(lines[2].getWords()) == 8
+        assert len(lines[3].getWords()) == 10
 
         assembler.assemble()
         
@@ -1141,7 +1141,7 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
-        makeFile(fname, [' toto = 6','  .word 1, 2, 3, ', '  .word 4, 5, toto, ', ' .word 7, 8, toto + 3,', ' .word 10, 11, titi + 3,', ' .word 1234', ' .word 14'])
+        makeFile(fname, [' toto = 6','  .word 3 * 3 - 8, 2, 3, ', '  .word 4, 5, toto, ', ' .word 7, 8, toto + 3,', ' .word 10, 11, titi + 3,', ' .word 1234', ' .word 14'])
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
         params = getArgumentParserParams(asm, args)
         info = asm.SOURCE_LINE("None", "utest", 0)
@@ -1151,9 +1151,9 @@ if __name__ == "__main__":
         lines = assembler.getAsmLines()
         
         assert len(lines[0].getWords()) == 4
-        assert len(lines[1].getWords()) == 7
-        assert len(lines[2].getWords()) == 7
-        assert len(lines[3].getWords()) == 9
+        assert len(lines[1].getWords()) == 12
+        assert len(lines[2].getWords()) == 8
+        assert len(lines[3].getWords()) == 10
 
         assembler.assemble()
         
@@ -1183,9 +1183,9 @@ if __name__ == "__main__":
         lines = assembler.getAsmLines()
         
         assert len(lines[0].getWords()) == 4
-        assert len(lines[1].getWords()) == 7
-        assert len(lines[2].getWords()) == 7
-        assert len(lines[3].getWords()) == 9
+        assert len(lines[1].getWords()) == 8
+        assert len(lines[2].getWords()) == 8
+        assert len(lines[3].getWords()) == 10
 
         assembler.assemble()
         
