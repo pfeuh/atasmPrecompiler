@@ -273,6 +273,15 @@ def startSilentMode():
     if not '-silent' in sys.argv:
         sys.argv.append('-silent')
 
+def stopDebugMode():
+    for x, arg in enumerate(sys.argv):
+        if arg == "-debug":
+            del sys.argv[x]
+
+def startDebugMode():
+    if not '-debug' in sys.argv:
+        sys.argv.append('-debug')
+
 def getRefTable():
     # got from http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php?title=6502_Opcodes
     # find some errors fixed in the present table
@@ -890,9 +899,7 @@ if __name__ == "__main__":
         assert len(assembler.getAsmLines()) == 5
         lines = assembler.getAsmLines()
 
-        #~ stopSilentMode()
         assembler.assemble()
-        #~ startSilentMode()
         
         assert assembler.getAsmLine(0).getBytes() == (0xea,)
         assert assembler.getAsmLine(1).getBytes() == (0x18,)
@@ -1021,15 +1028,13 @@ if __name__ == "__main__":
         assert len(assembler.getAsmLines()) == 7
 
         assembler.assemble()
+        #~ print assembler.getAsmLine(0).getBytes()
         assert assembler.getAsmLine(0).getBytes() == (0xad, 0x34, 0x12)
         assert assembler.getAsmLine(1).getBytes() == (0x8d, 0x67, 0x45)
         assert assembler.getAsmLine(2).getBytes() == (0x4c, 0xab, 0x90)
         assert assembler.getAsmLine(3).getBytes() == (0x4c, 0x68, 0x24)
         for index in range(6):
             assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
-
-        #~ print assembler.getAsmLine(5)
-
 
     def test_computeAbsolutex():
         import assembler6502 as asm
@@ -1123,7 +1128,7 @@ if __name__ == "__main__":
         assert lines[1].getBytes() == (1,2,3)
         assert lines[2].getBytes() == (4,5,6)
         assert lines[3].getBytes() == (7,8,9)
-        assert lines[4].getBytes() == []
+        assert lines[4].getBytes() == None
 
         assert lines[1].getAddress() == 1536
         assert lines[2].getAddress() == 1539
@@ -1155,7 +1160,7 @@ if __name__ == "__main__":
         assert lines[1].getBytes() == (1,0,2,0,3,0)
         assert lines[2].getBytes() == (4,0,5,0,6,0)
         assert lines[3].getBytes() == (7,0,8,0,9,0)
-        assert lines[4].getBytes() == []
+        assert lines[4].getBytes() == None
 
         assert lines[1].getAddress() == 1536
         assert lines[2].getAddress() == 1542
@@ -1187,7 +1192,7 @@ if __name__ == "__main__":
         assert lines[1].getBytes() == (0,1,0,2,0,3)
         assert lines[2].getBytes() == (0,4,0,5,0,6)
         assert lines[3].getBytes() == (0,7,0,8,0,9)
-        assert lines[4].getBytes() == []
+        assert lines[4].getBytes() == None
 
         assert lines[1].getAddress() == 1536
         assert lines[2].getAddress() == 1542
@@ -1359,42 +1364,118 @@ if __name__ == "__main__":
         assert line.isAbsolute()
         assert line.isZeroPage()
         assert line.getAddress() == 0x603
-        #~ assert assembler.getAsmLine(2) == 0x605
 
-    #~ stopSilentMode()
+    def test_isZeroPageX():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda $1234,x', '  lda $45,x', '  nop', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assembler.assemble()
+        
+        assert len(assembler.getAsmLines()) == 3
+        
+        line = assembler.getAsmLine(0)
+        
+        assert line.isAbsoluteX()
+        assert not line.isZeroPageX()
+        assert line.getAddress() == 0x600
 
+        line = assembler.getAsmLine(1)
+        assert line.isAbsoluteX()
+        assert line.isZeroPageX()
+        assert line.getAddress() == 0x603
 
-    test_precompiler()
+    def test_isZeroPageY():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda $1234,y', '  lda $45,y', '  nop', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assembler.assemble()
+        
+        assert len(assembler.getAsmLines()) == 3
+        
+        line = assembler.getAsmLine(0)
+        
+        assert line.isAbsoluteY()
+        assert not line.isZeroPageY()
+        assert line.getAddress() == 0x600
 
-    test_solveExpression()
-    test_tables()
-    test_getOpcodeValue()
-    test_createAsmLines()
-    test_AsmLine_hasLabel()
-    test_AsmLine_isMnemonicLine()
-    test_AsmLine_isDirectiveLine()
-    test_AsmLine_isAffectationLine()
-    test_computeRelative()
-    test_computeImplied()
-    test_computeAccumulator()
-    test_computeImmediate()
-    test_computeAffectation()
-    test_computeIndirecty()
-    test_computeIndirectx()
-    test_computeIndirect()
-    test_computeAbsolute()
-    test_computeAbsolutex()
-    test_computeAbsolutey()
-    test_computeByte()
-    test_computeWord()
-    test_computeDbyte()
-    test_computeString()
-    test_computeChArray()
-    test_computeDbs()
-    test_computeDws()
-    test_getModesByMnemonic()   
-    test_isByte()
-    #~ test_isZeroPage()
-    #~ test_compiler()
-    
+        line = assembler.getAsmLine(1)
+        assert line.isAbsoluteY()
+        assert not line.isZeroPageY() # lda $xx,y doesn't exists
+        assert line.getAddress() == 0x603
+
+    def test_truncator():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['  lda #>$1234', '  lda #<$1234', '  nop', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assembler.assemble()
+        
+        assert len(assembler.getAsmLines()) == 3
+        
+        line = assembler.getAsmLine(0)
+        
+        assert line.getAddress() == 0x600
+        assert line.getBytes()[1] == 0x12
+
+        line = assembler.getAsmLine(1)
+        assert line.getAddress() == 0x602
+        assert line.getBytes()[1] == 0x34
+
+        line = assembler.getAsmLine(2)
+        assert line.getAddress() == 0x604
+
+    def utests():
+        test_precompiler()
+        test_solveExpression()
+        test_tables()
+        test_getOpcodeValue()
+        test_createAsmLines()
+        test_AsmLine_hasLabel()
+        test_AsmLine_isMnemonicLine()
+        test_AsmLine_isDirectiveLine()
+        test_AsmLine_isAffectationLine()
+        test_computeRelative()
+        test_computeImplied()
+        test_computeAccumulator()
+        test_computeImmediate()
+        test_computeAffectation()
+        test_computeIndirecty()
+        test_computeIndirectx()
+        test_computeIndirect()
+        test_computeAbsolute()
+        test_computeAbsolutex()
+        test_computeAbsolutey()
+        test_computeByte()
+        test_computeWord()
+        test_computeDbyte()
+        test_computeString()
+        test_computeChArray()
+        test_computeDbs()
+        test_computeDws()
+        test_getModesByMnemonic()   
+        test_isByte()
+        test_isZeroPage()
+        test_isZeroPageX()
+        test_isZeroPageY()
+        test_truncator()
+        #~ test_compiler()
+
+    utests()
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

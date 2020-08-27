@@ -6,9 +6,6 @@ import os
 
 from tables6502 import *
 
-DEBUG = "-debug" in sys.argv
-SILENT = "-silent" in sys.argv
-
 if 1:
     VERSION = "0.99"
     COMMENT_TAG = ";"
@@ -84,13 +81,13 @@ def writeln(text, fp=sys.stdout):
     write("\n", fp)
 
 def printLink(message=EMPTY_STR, line=None):
-    if not DEBUG:
+    if not "-debug" in sys.argv:
         if line != None:
             writeln('File "%s", line %d, %s'%(line.getFname(), line.getNum(), message))
             writeln(line.getText())
     
 def printWarning(message, line=None):
-    if not SILENT:
+    if not "-silent" in sys.argv:
         if line != None:
             writeln('File "%s", line %d, warning : %s'%(line.getFname(), line.getNum(), message))
             writeln(line.getText())
@@ -98,11 +95,11 @@ def printWarning(message, line=None):
             writeln('Warning : %s'%(message))
     
 def printError(message, line=None):
-    if DEBUG:
+    if "-debug" in sys.argv:
         # the goal is to trig an error, then, it's possible to follow the white rabbit
         1/0
     else:
-        if not SILENT:
+        if not "-silent" in sys.argv:
             if line != None:
                 writeln('File "%s", line %d, error : %s'%(line.getFname(), line.getNum(), message))
                 writeln(line.getText())
@@ -263,59 +260,6 @@ def diskSave(fname=None, hook=placebo, mode = "wb"):
 def getInstructionSize(opcode):
     return CODE_SIZES[opcode]
 
-def xx__formatData(items, datatype, word, pc, info):
-    ret_lst = []
-    
-    if datatype in (CMD_DBS, CMD_DWS):
-        if type(items) == int:
-            items = [0] * items
-        else:
-            printError("%s command accepts only 1 parameter"%datatype, info)
-    if datatype in ('<', '>'):
-        if type(items) == int:
-            items = (items,)
-        else:
-            printError("%s command accepts only 1 parameter"%datatype, info)
-    else:
-        if type(items) == int:
-            items = (items,)
-        elif type(items) == str:
-            items = [ord(car) for car in items]
-        
-    if datatype in ('<', '>'):
-        if datatype == '>':
-            ret_lst = (items[0] & 0xff,)
-        else:
-            ret_lst = (items[0] / 0x100,)
-    else:
-        for item in items:
-            if datatype == CMD_BYTE:
-                if item & 0xff != item:
-                    printError("byte $%02x out of range"%item, info)
-                ret_lst.append(item)
-            elif datatype in (CMD_WORD, CMD_DBYTE):
-                if item & 0xffff != item:
-                    printError("word $%02x out of range"%item, info)
-                if datatype == CMD_WORD:
-                    ret_lst.append(item & 255)
-                    ret_lst.append(item / 256)
-                else:
-                    ret_lst.append(item / 256)
-                    ret_lst.append(item & 255)
-            elif datatype in (CMD_STRING, CMD_CH_ARRAY):
-                ret_lst.append(item)
-            elif datatype == CMD_DBS:
-                ret_lst.append(0)
-            
-    if datatype == CMD_STRING:
-        ret_lst.append(0) # eol (end of line)
-
-    result = tuple(ret_lst)
-    word.set(result)
-    if pc.isOK():
-        pc.add(len(result))
-    return result
-
 def countItems(words, item, line):
     count = 0
     for word in words:
@@ -358,14 +302,14 @@ def asmLinePrologue(line, mode, words, log=False):
     
     return opcode, value, size
     
-def asmLineEpilogue(line, pc, opcode, bytes, size):
+def asmLineEpilogue(line, pc, opcode, value, bytes, size):
     words = line.getWords()
 
     if bytes != None:
         words[1].set(opcode)
         if len(words) > 2:
             #mode relative has nothing to memorize
-            words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, bytes)
+            words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, value)
         line_bytes = [opcode]
         for byte in bytes:
             line_bytes.append(byte)
@@ -384,6 +328,15 @@ def getNewConstantName():
 
 def solveExpression(words, info, log=False):
     labels = []
+    
+    truncator = None
+    
+    if len(words):
+        label = words[0].getLabel()
+        if label in ('<', '>'):
+            truncator = label
+            words = words[1:]
+    
     for word in words:
         if word.isSolved():
             labels.append(str(word.get()))
@@ -399,6 +352,11 @@ def solveExpression(words, info, log=False):
         result = eval(expression)
     except:
         result = None
+    
+    if truncator == '>':
+        result = result / 256
+    elif truncator == '<':
+        result = result & 255
     
     if log:
         writeln(result)
@@ -505,9 +463,10 @@ class WORD():
             otext = "  --------"
         else:
             otext  = "%s "%{False:".", True:"X", None:" "}[self.isSolved()]
-            #~ otext += "(%s) "%TYPE_NAME[self.getType()]
-            otext += "(%s) "%self.getType()
-            otext += "%s "%self.getLabel()
+            otext += "(%s) "%TYPE_NAME[self.getType()]
+            #~ otext += "(%s) "%self.getType()
+            otext += "%s = "%self.getLabel()
+            otext += "%s"%self.get()
         return otext + CHAR_LF
 
     def debugStr(self):
@@ -550,7 +509,7 @@ class ASM_LINE():
         self.__line = line
         self.__text = text
         self.__solved = False
-        self.__bytes = []
+        self.__bytes = None
         self.__address = None
         self.__words = []
 
@@ -591,32 +550,65 @@ class ASM_LINE():
         mnemonic = words[1].getLabel().lower()
         value = words[2].get()
         if self.isAbsolute():
-            if 'ZeroPage' in getModesByMnemonic(mnemonic):
+            if ZEROPAGE in getModesByMnemonic(mnemonic):
                 if value != None:
-                    if value >= 0 and value < 256:
+                    if isByte(value):
                         return True                        
         return False
         
-    #~ def isZeroPageX(self):
-        #~ return len(self.__words)
+    def isZeroPageX(self):
+        words = self.__words
+        mnemonic = words[1].getLabel().lower()
+        value = words[2].get()
+        if self.isAbsoluteX():
+            if ZEROPAGEX in getModesByMnemonic(mnemonic):
+                if value != None:
+                    if isByte(value):
+                        return True                        
+        return False
         
-    #~ def isZeroPageY(self):
-        #~ return len(self.__words) 
+    def isZeroPageY(self):
+        words = self.__words
+        mnemonic = words[1].getLabel().lower()
+        value = words[2].get()
+        if self.isAbsoluteY():
+            if ZEROPAGEY in getModesByMnemonic(mnemonic):
+                if value != None:
+                    if isByte(value):
+                        return True                        
+        return False
         
     def isAbsolute(self):
         words = self.__words
         mnemonic = words[1].getLabel().lower()
-        return len(self.__words) >= 3
+        if self.__bytes == None:
+            return len(self.__words) >= 3
+        else:
+            return getOpcodeValue(mnemonic, ABSOLUTE, self.getLine(), strict=False) == words[1].get()
         
     def isAbsoluteX(self):
         words = self.__words
         mnemonic = words[1].getLabel().lower()
-        return len(self.__words)>= 5 and words[-1].getLabel().lower() == "x" and words[-2].getLabel() == ","
+        result = True
+        if self.__bytes == None:
+            result &= len(self.__words) >= 5
+            result &= words[-1].getLabel().lower() == "x"
+            result &= words[-2].getLabel() == ","
+        else:
+            result &= getOpcodeValue(mnemonic, ABSOLUTEX, self.getLine(), strict=False) == words[1].get()
+        return result
         
     def isAbsoluteY(self):
         words = self.__words
         mnemonic = words[1].getLabel().lower()
-        return len(self.__words) >= 5 and words[-1].getLabel().lower() == "y" and words[-2].getLabel() == ","
+        result = True
+        if self.__bytes == None:
+            result &= len(self.__words) >= 5
+            result &= words[-1].getLabel().lower() == "y"
+            result &= words[-2].getLabel() == ","
+        else:
+            result &= getOpcodeValue(mnemonic, ABSOLUTEY, self.getLine(), strict=False) == words[1].get()
+        return result
         
     def isIndirect(self):
         words = self.__words
@@ -889,10 +881,13 @@ class ASSEMBLER():
         
         if line.isMnemonicLine():
             self.computeOpcode(line, pc)
+
         elif line.isDirectiveLine():
             self.computeDirective(line, pc)
+
         elif line.isAffectationLine():
             self.computeAffectation(line, pc)
+
         else:
             if not line.hasLabel():
                 printError("syntax error", info)
@@ -910,6 +905,26 @@ class ASSEMBLER():
         else:
             return
             
+    #~ def computeSplittedValues(self, line):
+        #~ info = line.getLine()
+        #~ words = line.getWords()
+        #~ for index, word in enumerate(words):
+            #~ label = word.getLabel()
+            #~ if label in  ('<', '>'):
+                #~ if index == (len(words) -1):
+                    #~ printError("bad syntax, '%s' needs data"%label, info)
+                #~ else:
+                    #~ value = solveExpression(words[index+1:], info, log=True)
+                    
+                    #~ if value != None:
+                        #~ if label == "<":
+                            #~ word.set(value / 256)
+                        #~ elif label == ">":
+                            #~ word.set(value & 255)
+                        #~ while len(words) > (index+1):
+                            #~ words = words[:-1]
+                        #~ return # do it only one time
+
     def computeOpcode(self, line, pc):
         words = line.getWords()
         nb_words = len(words)
@@ -952,13 +967,16 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            move = value - (pc.get() + 2) 
-            if not isRelative(move):
-                printError("relative value out of range pc=$%04x target=$%04X move:$%04X"%(pc.get(), value, move), line.getLine())
+            if value == None:
+                pass
             else:
-                bytes = (move & 0xff,)
+                move = value - (pc.get() + 2) 
+                if not isRelative(move):
+                    printError("relative value out of range pc=$%04x target=$%04X move:$%04X"%(pc.get(), value, move), line.getLine())
+                else:
+                    bytes = (move & 0xff,)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeImplied(self, line, pc):
         words = line.getWords()
@@ -969,7 +987,7 @@ class ASSEMBLER():
             # all prerequisites are good, let's solve
             bytes = tuple([])
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeAccumulator(self, line, pc):
         words = line.getWords()
@@ -980,7 +998,7 @@ class ASSEMBLER():
             # all prerequisites are good, let's solve
             bytes = tuple([])
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeImmediate(self, line, pc):
         words = line.getWords()
@@ -989,12 +1007,14 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            if not isByte(value):
+            if value == None:
+                pass
+            elif not isByte(value):
                 printError("bad byte $%02x"%(value), line.getLine())
             else:
                 bytes = (value,)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeIndirectX(self, line, pc):
         words = line.getWords()
@@ -1003,12 +1023,14 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            if not isByte(value):
+            if value == None:
+                pass
+            elif not isByte(value):
                 printError("bad byte $%02x"%(value), line.getLine())
             else:
                 bytes = (value,)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
         
     def computeIndirectY(self, line, pc):
         words = line.getWords()
@@ -1017,12 +1039,14 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            if not isByte(value):
+            if value == None:
+                pass
+            elif not isByte(value):
                 printError("bad byte $%02x out of range"%(value), line.getLine())
             else:
                 bytes = (value,)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeIndirect(self, line, pc):
         words = line.getWords()
@@ -1031,12 +1055,14 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            if not isWord(value):
+            if value == None:
+                pass
+            elif not isWord(value):
                 printError("bad word $%04x"%(value), line.getLine())
             else:
                 bytes = (value & 255, value / 256)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeAbsolute(self, line, pc):
         words = line.getWords()
@@ -1045,93 +1071,46 @@ class ASSEMBLER():
         
         if opcode != None:
             # all prerequisites are good, let's solve
-            if not isWord(value):
+            if value == None:
+                pass
+            elif not isWord(value):
                 printError("bad word $%04x"%(value), line.getLine())
             else:
                 bytes = (value & 255, value / 256)
 
-        asmLineEpilogue(line, pc, opcode, bytes, size)
-        return
-
-        words = line.getWords()
-        info = line.getLine()
-        
-        mnenonic = words[1].getLabel().lower()
-        mode = ABSOLUTE
-        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
-        if opcode != None:
-            line_size = getInstructionSize(opcode)
-            value = solveExpression(words[2:], info)
-            if value != None and pc.isOK():
-                # all prerequisites are good, let's solve
-                words[1].set(opcode)
-                if value < 0 or value > 65535:
-                    printError("absolute value $%04x out of range"%(value), info)
-                    line_size = 3
-                else:
-                    words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, value)
-                    line.setBytes((opcode, value & 255, value / 256))
-                    while len(words) > 3:
-                        del words[-1]
-            else:
-                line_size = 3
-        # event if it's not solved, let's compute pc for the next lines
-        else:
-            line_size = 3
-        line.setAddress(pc.get())
-        pc.add(line_size)
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeAbsolutex(self, line, pc):
         words = line.getWords()
-        info = line.getLine()
+        opcode, value, size = asmLinePrologue(line, ABSOLUTEX, words[2:-2])
+        bytes = None
         
-        mnenonic = words[1].getLabel().lower()
-        mode = ABSOLUTEX
-        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
-            line_size = getInstructionSize(opcode)
-            value = solveExpression(words[2:-2], info)
-            if value != None and pc.isOK():
-                # all prerequisites are good, let's solve
-                if value < 0 or value > 65535:
-                    printError("absolute value $%04x out of range"%(value), info)
-                else:
-                    words[1].set(opcode)
-                    words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, value)
-                    line.setBytes((opcode, value & 255, value / 256))
-                    while len(words) > 3:
-                        del words[-1]
-        # event if it's not solved, let's compute pc for the next lines
-        else:
-            line_size = 0
-        line.setAddress(pc.get())
-        pc.add(line_size)
+            # all prerequisites are good, let's solve
+            if value == None:
+                pass
+            elif not isWord(value):
+                printError("bad word $%04x"%(value), line.getLine())
+            else:
+                bytes = (value & 255, value / 256)
+
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeAbsolutey(self, line, pc):
         words = line.getWords()
-        info = line.getLine()
+        opcode, value, size = asmLinePrologue(line, ABSOLUTEY, words[2:-2])
+        bytes = None
         
-        mnenonic = words[1].getLabel().lower()
-        mode = ABSOLUTEY
-        opcode = getOpcodeValue(mnenonic, mode, info, strict=True)
         if opcode != None:
-            line_size = getInstructionSize(opcode)
-            value = solveExpression(words[2:-2], info)
-            if value != None and pc.isOK():
-                # all prerequisites are good, let's solve
-                if value < 0 or value > 65535:
-                    printError("absolute value $%04x out of range"%(value), info)
-                else:
-                    words[1].set(opcode)
-                    words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, value)
-                    line.setBytes((opcode, value & 255, value / 256))
-                    while len(words) > 3:
-                        del words[-1]
-        # event if it's not solved, let's compute pc for the next lines
-        else:
-            line_size = 0
-        line.setAddress(pc.get())
-        pc.add(line_size)
+            # all prerequisites are good, let's solve
+            if value == None:
+                pass
+            elif not isWord(value):
+                printError("bad word $%04x"%(value), line.getLine())
+            else:
+                bytes = (value & 255, value / 256)
+
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
     def computeAffectation(self, line, pc):
         words = line.getWords()
