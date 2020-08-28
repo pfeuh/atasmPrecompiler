@@ -324,7 +324,6 @@ def compareStrings(s1, s2):
         if word1 != word3:
             pointer = "<--"
         writeln("%s '%s' - '%s' %s %s"%(word1, word2, word4, word3, pointer))
-            
 
 def compareFiles(fname1, fname2):
     with open(fname1, "rb") as fp:
@@ -382,7 +381,6 @@ def getArgumentParserParams(asm, args):
     ap.addArgument(asm.ARGUMENT('-org', int, check_minus=True))  # start address of code segment
     ap.parse(args)
     return ap.getArgsDictionary()
-
 
 def saveBytes(fname, bytes):
     with open(fname, "wb") as fp:
@@ -472,7 +470,28 @@ if __name__ == "__main__":
 
         value='123'
         word = asm.WORD('toto', asm.TYPE_VARIABLE, value = value)
-        assert asm.solveString(word, info) == (123, )
+        assert asm.solveString(word, info) == None
+
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['100 start', '110  jsr stop', '120  jmp start', '130 stop: ', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 5
+        assembler.assemble()
+        
+        assert getLineWord(assembler, 0, 0, strict=False).isSolved()
+        assert not getLineWord(assembler, 1, 1, strict=False).isSolved()
+        assert getLineWord(assembler, 1, 2, strict=False).isSolved()
+        
+        assembler.assemble()
+        assert getLineWord(assembler, 0, 0, strict=False).isSolved()
+        assert getLineWord(assembler, 1, 1, strict=False).isSolved()
+        assert getLineWord(assembler, 1, 2, strict=False).isSolved()
 
     def test_precompiler():
         import precompiler as pco
@@ -593,53 +612,31 @@ if __name__ == "__main__":
         text = 'test5 .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
         assert commentLine(text) == 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
     
-    def test_compiler():
+    def test_assembly():
         import assembler6502 as asm
         
-        fname = "utest/test_opcodes.asm"
+        #~ fname = "utest/test_opcodes.asm"
+        fname = "precompiled.asm"
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
         params = getArgumentParserParams(asm, args)
 
         assembler = asm.ASSEMBLER(params)
         assembler.assemble()
+        assembler.assemble()
+        #~ assembler.assemble()
+        #~ assembler.assemble()
+        #~ for word in assembler.getWords():
+            #~ print word, type(word)
+        
+        write(assembler.getDesassembled())
         
         # let's compare bytes of reference source assembled with atasm
         # with bytes of source assembled with assembler under test
         
-        ref_start, ref_bytes = readAtariFile("utest/TEST_OPCODES_ATASM.BIN")
-        assert ref_start == 0x600
-        assert len(ref_bytes) == 318
-        buffer = BUFFER(ref_bytes)
-
-        prog_bytes = []
-        for line_num, line in enumerate(assembler.getAsmLines()):
-            otext = "%06d"%line_num
-            bytes = line.getBytes()
-            for byte in bytes:
-                otext += " %02x"%byte
-                prog_bytes.append(byte)
-            while len(otext) < 24:
-                otext += " "
-            otext += "      %s"%line.getText()
-            #~ writeln(otext)
-        saveBytes("utest/prog_bytes.bin", prog_bytes)
-                
-        # let's compare
-        for line in assembler.getAsmLines():
-            bytes = line.getBytes()
-            if len(bytes):
-                write("%-20s   "%str(line.getText()))
-                for byte in bytes:
-                    ref_byte = buffer.get()
-                    if type(ref_byte) == int and type(byte) == int:
-                        write("%02x:%02x - "%(ref_byte, byte))
-                    else:
-                        write("%s:%s - "%(ref_byte, byte))
-                    if byte != ref_byte:
-                        asm.printError("difference with reference file!", line.getLine())
-                writeln("")
-            else:
-                pass
+        #~ ref_start, ref_bytes = readAtariFile("utest/TEST_OPCODES_ATASM.BIN")
+        #~ assert ref_start == 0x600
+        #~ assert len(ref_bytes) == 318
+        #~ buffer = BUFFER(ref_bytes)
 
     def test_tables ():
         import tables6502
@@ -693,7 +690,6 @@ if __name__ == "__main__":
             else:
                 # opcode doesn't exist for the 6502
                 pass
-        
 
     def test_createAsmLines(fp=sys.stdout):
         import assembler6502 as asm
@@ -766,9 +762,7 @@ if __name__ == "__main__":
         words = line.getWords()
         assert len(words) == 12
         assert getLineWord(assembler, 0, 10, strict=False).getLabel() == '37'
-        
-        
- 
+
     def test_AsmLine_hasLabel():
         import assembler6502 as asm
         
@@ -796,7 +790,6 @@ if __name__ == "__main__":
         word.set(1234)
         assert getLineWord(assembler, 0, 1).get() == 1234
         assert getLineWord(assembler, 3, 0).get() == 1234
-        
 
     def test_AsmLine_isMnemonicLine():
         import assembler6502 as asm
@@ -910,7 +903,6 @@ if __name__ == "__main__":
             
     def test_computeAccumulator():
         import assembler6502 as asm
-        stopSilentMode()
         
         fname = "utest/testfile.asm"
         makeFile(fname, [' LSR A', ' ASL    A', '    ROL A', ' ror a'])
@@ -930,7 +922,6 @@ if __name__ == "__main__":
         for index in range(4):
             assert assembler.getAsmLine(index).getAddress() == 0x600 + index
 
-        startSilentMode()
         
     def test_computeImmediate():
         import assembler6502 as asm
@@ -1441,7 +1432,7 @@ if __name__ == "__main__":
         line = assembler.getAsmLine(2)
         assert line.getAddress() == 0x604
 
-    def test_ignoreLines():
+    def text_extractLabelsFromLine():
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
@@ -1462,7 +1453,6 @@ if __name__ == "__main__":
             for x in range(len(line1.getWords())):
                 word1 = line1.getWords()[x]
                 word2 = line2.getWords()[x]
-                #~ print ln, x, word1.get(), word2.get()
                 assert word1.get() == word2.get()
                 assert word1.getLabel() == word2.getLabel()
                 assert word1.getType() == word2.getType()
@@ -1501,10 +1491,13 @@ if __name__ == "__main__":
         test_isZeroPageX()
         test_isZeroPageY()
         test_truncator()
-        test_ignoreLines()
-        #~ test_compiler()
+        text_extractLabelsFromLine()
+        test_assembly()
 
+    startSilentMode()
     #~ stopSilentMode()
-    #~ test_ignoreLines()
+    #~ startDebugMode()
+    #~ stopDebugMode()
+    #~ test_assembly()
     utests()
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

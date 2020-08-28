@@ -56,7 +56,7 @@ print_out
     rts
 
 print_nibble
-    phx
+    pha
     and #$0f
     tax
     lda hextab, x
