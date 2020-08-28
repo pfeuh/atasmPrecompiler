@@ -1441,6 +1441,32 @@ if __name__ == "__main__":
         line = assembler.getAsmLine(2)
         assert line.getAddress() == 0x604
 
+    def test_ignoreLines():
+        import assembler6502 as asm
+        
+        fname = "utest/testfile.asm"
+        makeFile(fname, ['100 start lda #>$1234', '200  lda #<$1234', '300  nop', ])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600', '-debug-')
+        params = getArgumentParserParams(asm, args) 
+        assembler1 = asm.ASSEMBLER(params) 
+
+        makeFile(fname, ['start  lda #>$1234', ' lda #<$1234', ' nop', ])
+        assembler2 = asm.ASSEMBLER(params) 
+        
+        lines1 = assembler1.getAsmLines()
+        lines2 = assembler2.getAsmLines()
+        
+        for ln in range(3):
+            line1 = lines1[ln]
+            line2 = lines2[ln]
+            for x in range(len(line1.getWords())):
+                word1 = line1.getWords()[x]
+                word2 = line2.getWords()[x]
+                #~ print ln, x, word1.get(), word2.get()
+                assert word1.get() == word2.get()
+                assert word1.getLabel() == word2.getLabel()
+                assert word1.getType() == word2.getType()
+
     def utests():
         test_precompiler()
         test_solveExpression()
@@ -1475,7 +1501,10 @@ if __name__ == "__main__":
         test_isZeroPageX()
         test_isZeroPageY()
         test_truncator()
+        test_ignoreLines()
         #~ test_compiler()
 
+    #~ stopSilentMode()
+    #~ test_ignoreLines()
     utests()
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

@@ -1,3 +1,3 @@
-  lda #>$1234
-  lda #<$1234
-  nop
+start  lda #>$1234
+ lda #<$1234
+ nop

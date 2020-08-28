@@ -22,6 +22,7 @@ if 1:
     CHAR_LF = '\n'
     CHAR_EQUAL = '='
     CHAR_COMMA = ','
+    DIGITS = "123456789"
     
     DEFAULT_PC_VALUE = 0x200
 
@@ -166,6 +167,22 @@ def extractLabelsFromLine(text, line=None):
     current_quote = None
     words = []
     
+    line_num = EMPTY_STR
+    for index, car in enumerate(text):
+        if car in DIGITS:
+            line_num += car
+        elif car == CHAR_SPACE:
+            if len(line_num):
+                text = text[index+1:]
+                break
+            else:
+                break
+        else:
+            if len(line_num):
+                printError("bad syntax", line.getLine())
+            else:
+                break
+
     word = EMPTY_STR
     
     if not len(text):
@@ -203,8 +220,8 @@ def extractLabelsFromLine(text, line=None):
                     mode = mode_normal
                     current_quote = None
     if word != EMPTY_STR:
-                    words.append(word)
-                    
+        words.append(word)
+
     # whole line is parsed, last check:
     if mode != mode_normal:
         printError("string not closed!", line)
@@ -865,6 +882,10 @@ class ASSEMBLER():
             # line is created, let's add its words
             labels = [label for label in extractLabelsFromLine(line.getText(), line)]
             info = line.getLine()
+
+            #~ if len(labels):
+                #~ if isLabelAnInteger(labels[0]):
+                    #~ labels == labels[1:]
             
             for position, label in enumerate(labels):
                 if not position:
@@ -888,9 +909,6 @@ class ASSEMBLER():
                     if word.getType() == TYPE_VARIABLE:
                         self.__words[label] = word
                 line.addWord(word)
-
-            #~ if line.getWords()[-1].getLabel() == CHAR_COMMA:
-                #~ del line.getWords()[-1]
 
             if len(line.getWords()) >= 3:
                 if line.getWords()[2].getLabel() == CHAR_COMMA:
@@ -937,26 +955,6 @@ class ASSEMBLER():
         else:
             return
             
-    #~ def computeSplittedValues(self, line):
-        #~ info = line.getLine()
-        #~ words = line.getWords()
-        #~ for index, word in enumerate(words):
-            #~ label = word.getLabel()
-            #~ if label in  ('<', '>'):
-                #~ if index == (len(words) -1):
-                    #~ printError("bad syntax, '%s' needs data"%label, info)
-                #~ else:
-                    #~ value = solveExpression(words[index+1:], info, log=True)
-                    
-                    #~ if value != None:
-                        #~ if label == "<":
-                            #~ word.set(value / 256)
-                        #~ elif label == ">":
-                            #~ word.set(value & 255)
-                        #~ while len(words) > (index+1):
-                            #~ words = words[:-1]
-                        #~ return # do it only one time
-
     def computeOpcode(self, line, pc):
         words = line.getWords()
         nb_words = len(words)
@@ -1196,17 +1194,6 @@ class ASSEMBLER():
                 return WORD(label, TYPE_STRING, label)
 
         return word
-
-    def computeAffectations(self, line):
-        # solve some affectations
-        words = line.getWords()
-        if len(words) >= 4:
-            if words[2].getLabel() == CHAR_EQUAL:
-                if words[3].isVariable():
-                    if words[3].isSolved():
-                        words[1].set(words[3].get())
-                        del words[-1]
-                        del words[-1]
 
     def computeDirective(self, line, pc):
         words = line.getWords()
