@@ -425,6 +425,12 @@ def solveString(word, info):
         printError("syntax error", info)
         return None
 
+def addSign(value):
+    if value > 127:
+        return (value ^ 255) + 1
+    else:
+        return value
+
 class PROGRAM_COUNTER():
     def __init__(self, value=DEFAULT_PC_VALUE):
         self.__PC = value
@@ -785,6 +791,7 @@ class ASSEMBLER():
         self.__source_lines = []
         self.__asm_lines = []
         self.__words = {}
+        self.__labels = {}
 
         # let's go!
         self.createAsmLines(self.__fname)
@@ -913,6 +920,13 @@ class ASSEMBLER():
                     if word.getType() == TYPE_VARIABLE:
                         self.__words[label] = word
                 line.addWord(word)
+
+                if position == 0 and word.getType() == TYPE_VARIABLE:
+                    label = word.getLabel()
+                    if label in self.__labels.keys():
+                        printError("label '%s' already declared"%label, line.getLine())
+                    else:
+                        self.__labels[label] = word
 
             if len(line.getWords()) >= 3:
                 if line.getWords()[2].getLabel() == CHAR_COMMA:
@@ -1422,7 +1436,20 @@ class ASSEMBLER():
         pc.add(nb_words * SIZEOF_WORD)
 
     def computeOrg(self, line, pc):
-        pass
+        words = line.getWords()
+        addr = pc.get()
+        info = line.getLine()
+        
+        if addr:
+            printError("programm counter already set", info)
+        else:
+            if len(words) < 4:
+                printError("syntax error", info)
+            else:
+                result = solveExpression(words[3:], info)
+                if result != None:
+                    self.__org = result
+                    pc = PROGRAM_COUNTER(result)
 
     def getCodeText(self):
         otext = EMPTY_STR
@@ -1446,14 +1473,13 @@ class ASSEMBLER():
             return "%6.2f%% assembled (%d/%d)"%(percent, solved, items)
 
     def getLabelsText(self):
-        otext = EMPTY_STR
-        labels = []
-        keys = self.__words.keys()
+        keys = self.__labels.keys()
         keys.sort()
+        otext = EMPTY_STR
+        
         for key in keys:
-            item = self.__words[key]
-            if item.isVariable():
-                otext += "%-20 %s"%(key, str(item.get())) + CHAR_LF
+            value = self.__labels[key]
+            otext += "%s 0x%x"%(key, value.get()) + CHAR_LF
         return otext
 
     def getDesassembled(self):
@@ -1466,10 +1492,10 @@ class ASSEMBLER():
                 else:
                     address = "%04x"%address
                 label = line.getWords()[0].getLabel()
-                otext += "%s %s\n"%(address, label)
+                otext += "%s %s:\n"%(address, label)
                 
             if line.isMnemonicLine():
-                if line.getAddress() != None and line.getBytes() != None:
+                if line.isSolved():
                     opcode = line.getWords()[1].get()
                     address = line.getAddress()
                     mnemonic = OPCODE_VALUES[opcode].upper()
@@ -1486,18 +1512,15 @@ class ASSEMBLER():
                     elif mode == ZEROPAGE:
                         otext += "%s $%02X"%(mnemonic, bytes[1])
                     elif mode == IMMEDIATE:
-                        otext += "%s #$%04X"%(mnemonic, bytes[1])
+                        otext += "%s #$%02X"%(mnemonic, bytes[1])
                     elif mode == ACCUMULATOR:
                         otext += "%s A"%(mnemonic)
                     elif mode == ABSOLUTE:
                         otext += "%s $%04X"%(mnemonic, bytes[1] + bytes[2] * 256)
                     elif mode == RELATIVE:
-                        offset = bytes[1]
-                        if offset >= 128:
-                            offset = 255 - offset
-                        otext += "%s $%04X"%(mnemonic, 2 + offset)
+                        otext += "%s $%04X"%(mnemonic, address + 2 + addSign(bytes[1]))
                     elif mode == INDIRECTY:
-                        otext += "%s ($%02X), Y"%(mnemonic, bytes[1])
+                        otext += "%s ($%02X),Y"%(mnemonic, bytes[1])
                     elif mode == ZEROPAGEX:
                         otext += "%s $%02X,X"%(mnemonic, bytes[1])
                     elif mode == ABSOLUTEY:
@@ -1511,6 +1534,31 @@ class ASSEMBLER():
                     else:
                         raise Exception("WTF???")
                     otext += CHAR_LF
+                else:
+                    info = line.getLine()
+                    otext += "NOT SOLVED:%s #%d %s\n"%(info.getFname(), info.getNum(), info.getText())
+            elif line.isDirectiveLine():
+                if line.isSolved():
+                    bytes = line.getBytes()
+                    address = line.getAddress()
+                    cols = self.__nb_cols
+                    
+                    #~ text = EMPTY_STR
+                    for index, byte in enumerate(bytes):
+                        if (index % cols) == 0:
+                            text = "%04X "%(address + index)
+                            
+                        text += "%02X "%byte
+                        
+                        if (index % cols) == (cols - 1):
+                            text += "\n"
+                            otext += text
+                            text = EMPTY_STR
+
+                    if text != EMPTY_STR:
+                        text += "\n"
+                        otext += text
+                    
                 else:
                     info = line.getLine()
                     otext += "NOT SOLVED:%s #%d %s\n"%(info.getFname(), info.getNum(), info.getText())

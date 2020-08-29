@@ -616,19 +616,26 @@ if __name__ == "__main__":
         import assembler6502 as asm
         
         #~ fname = "utest/test_opcodes.asm"
-        fname = "precompiled.asm"
-        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        fname = "utest/precompiled.asm"
+        #~ args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16')
         params = getArgumentParserParams(asm, args)
 
         assembler = asm.ASSEMBLER(params)
         assembler.assemble()
-        assembler.assemble()
+        #~ assembler.assemble()
         #~ assembler.assemble()
         #~ assembler.assemble()
         #~ for word in assembler.getWords():
             #~ print word, type(word)
         
         write(assembler.getDesassembled())
+        
+        write(assembler.getLabelsText())
+        
+        
+        
+        
         
         # let's compare bytes of reference source assembled with atasm
         # with bytes of source assembled with assembler under test
@@ -1495,7 +1502,7 @@ if __name__ == "__main__":
         test_assembly()
 
     startSilentMode()
-    #~ stopSilentMode()
+    stopSilentMode()
     #~ startDebugMode()
     #~ stopDebugMode()
     #~ test_assembly()

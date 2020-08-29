@@ -1,7 +1,24 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-bytes = (34, 86, 79, 83, 67, 54, 53)
+import sys
+import os
 
-for byte in bytes:
-    print chr(byte),
+def write(text, fp=sys.stdout):
+    if fp != None:
+        fp.write(str(text))
+    
+def writeln(text, fp=sys.stdout):
+    write(text, fp)
+    write("\n", fp)
+
+def addSign(value):
+    if value > 127:
+        return (value ^ 255) + 1
+    else:
+        return value
+
+for x in range(256):
+    write("%4d->%4d "%(x, addSign(x)))
+    if x % 8 == 7:
+        writeln("")
