@@ -12,13 +12,10 @@ def writeln(text, fp=sys.stdout):
     write(text, fp)
     write("\n", fp)
 
-def addSign(value):
-    if value > 127:
-        return (value ^ 255) + 1
-    else:
-        return value
-
-for x in range(256):
-    write("%4d->%4d "%(x, addSign(x)))
-    if x % 8 == 7:
-        writeln("")
+with open("TEST_OPCODES_ATASM.BIN", "r") as fp:
+    while 1:
+        byte = fp.read(1)
+        writeln("%02x"%ord(byte))
+        if byte == "":
+            break
+        

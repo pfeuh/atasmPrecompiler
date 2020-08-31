@@ -1,3 +1,6 @@
+    .ORG 1536
+    .export _main
+_main:
 LABEL_01: BRK
     ORA ($A7,X) 
     ORA $6C
@@ -59,7 +62,7 @@ LABEL_07: RTS
     PLA
     ADC #$48
     ROR A
-    JMP ($E120)
+    JMP($E120)
     ADC $5334
     ROR $3D76
 LABEL_08: BCS LABEL_08

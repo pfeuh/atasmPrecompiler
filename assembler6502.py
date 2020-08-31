@@ -541,7 +541,8 @@ class SOURCE_LINE():
     def __init__(self, fname, text, num):
         self.__num = num
         self.__text = text
-        self.__fname = os.path.basename(fname)
+        self.__fname = fname
+        #~ self.__fname = os.path.basename(fname)
 
     def getFname(self):
         return self.__fname
@@ -603,33 +604,36 @@ class ASM_LINE():
         words = self.__words
         mnemonic = words[1].getLabel().lower()
         value = words[2].get()
-        if self.isAbsolute():
-            if ZEROPAGE in getModesByMnemonic(mnemonic):
-                if value != None:
-                    if isByte(value):
-                        return True                        
+        if self.isSolved():
+            if self.isAbsolute():
+                if ZEROPAGE in getModesByMnemonic(mnemonic):
+                    if value != None:
+                        if isByte(value):
+                            return True                        
         return False
         
     def isZeroPageX(self):
         words = self.__words
         mnemonic = words[1].getLabel().lower()
         value = words[2].get()
-        if self.isAbsoluteX():
-            if ZEROPAGEX in getModesByMnemonic(mnemonic):
-                if value != None:
-                    if isByte(value):
-                        return True                        
+        if self.isSolved():
+            if self.isAbsoluteX():
+                if ZEROPAGEX in getModesByMnemonic(mnemonic):
+                    if value != None:
+                        if isByte(value):
+                            return True                        
         return False
         
     def isZeroPageY(self):
         words = self.__words
         mnemonic = words[1].getLabel().lower()
         value = words[2].get()
-        if self.isAbsoluteY():
-            if ZEROPAGEY in getModesByMnemonic(mnemonic):
-                if value != None:
-                    if isByte(value):
-                        return True                        
+        if self.isSolved():
+            if self.isAbsoluteY():
+                if ZEROPAGEY in getModesByMnemonic(mnemonic):
+                    if value != None:
+                        if isByte(value):
+                            return True                        
         return False
         
     def isAbsolute(self):
@@ -778,7 +782,7 @@ class ASM_LINE():
         return otext + CHAR_LF
 
 class ASSEMBLER():
-    def __init__(self, params, solver_fp=None):
+    def __init__(self, params):
         # arguments stuff
         self.__params = params
         self.__fname = self.getArgument('-ifname')
@@ -792,6 +796,7 @@ class ASSEMBLER():
         self.__asm_lines = []
         self.__words = {}
         self.__labels = {}
+        self.__short_opcodes_line_nums = {}
 
         # let's go!
         self.createAsmLines(self.__fname)
@@ -875,6 +880,34 @@ class ASSEMBLER():
         except:
             return None
         
+    def isStartAddressOK(self):
+        too_late = False
+        for line in self.getAsmLines():
+            if line.isAffectationLine():
+                if line.getWords()[1].getLabel() == '*':
+                    if too_late:
+                        printError("start address set too late", line.getLine())
+                        return False
+                    elif self.__org:
+                        printError("start address already set", line.getLine())
+                        return False
+                    else:
+                        result = solveExpression(line.getWords()[3:], line.getLine())
+                        if result != None:
+                            self.__org = result
+                            line.setAddress(result)
+                            return True
+                        else:
+                            return False
+            elif line.isMnemonicLine() or line.isDirectiveLine():
+                if line.getWords()[1].getLabel() != '*':
+                    too_late == True
+        if not self.__org:
+            printError("start address is missing")
+            return False
+        else:
+            return True
+
     def createAsmLines(self, fname):
         # let's slice the line in a list of words
         with open(fname, "r") as fp:
@@ -891,6 +924,7 @@ class ASSEMBLER():
                 # line is empty, no need to store it
                 continue
             self.splitLine(asm_line)
+        self.isStartAddressOK()
 
     def splitLine(self, line):
 
@@ -975,15 +1009,25 @@ class ASSEMBLER():
 
         return word
 
+    def reset(self):
+        temp_dict = {}
+        for key in self.__short_opcodes_line_nums.keys():
+            temp_dict[key] = self.__short_opcodes_line_nums[key]
+        self.__init__(self.__params)
+        self.__short_opcodes_line_nums = temp_dict
+
     def assemble(self):
         # this is only one pass, all may not be solved with it
         pc = PROGRAM_COUNTER(self.__org)
 
-        for line in self.__asm_lines:
+        for line_num, line in enumerate(self.__asm_lines):
             if not line.isSolved():
-                self.parseLine(line, pc)
+                self.parseLine(line_num, line, pc)
+        
+        # classical 6502 trap, page zero modes are shorter than absolute ones
+        self.correctShortOpcodes();
 
-    def parseLine(self, line, pc):
+    def parseLine(self, line_num, line, pc):
         line.setAddress, pc.get()
         info = line.getLine()
         
@@ -991,7 +1035,7 @@ class ASSEMBLER():
             self.computeLabel(line, pc)
         
         if line.isMnemonicLine():
-            self.computeOpcode(line, pc)
+            self.computeOpcode(line_num, line, pc)
 
         elif line.isDirectiveLine():
             self.computeDirective(line, pc)
@@ -1032,7 +1076,7 @@ class ASSEMBLER():
         #~ else:
             #~ return
             
-    def computeOpcode(self, line, pc):
+    def computeOpcode(self, line_num, line, pc):
         words = line.getWords()
         nb_words = len(words)
         info = line.getLine()
@@ -1046,24 +1090,53 @@ class ASSEMBLER():
         
         if line.isRelative():
             self.computeRelative(line, pc)
+
         elif line.isImplied():
             self.computeImplied(line, pc)
+
         elif line.isAccumulator():
             self.computeAccumulator(line, pc)
+
         elif line.isImmediate():
             self.computeImmediate(line, pc)
+
         elif line.isIndirectX():
             self.computeIndirectX(line, pc)
+
         elif line.isIndirectY():
             self.computeIndirectY(line, pc)
+
         elif line.isIndirect():
             self.computeIndirect(line, pc)
+
         elif line.isAbsoluteX():
-            self.computeAbsolutex(line, pc)
+            if not line_num in self.__short_opcodes_line_nums.keys():
+                if ABSOLUTEX in modes:
+                    self.computeAbsoluteX(line, pc)
+                elif ZEROPAGEX in modes:
+                    self.computeZeroPageX(line, pc)
+                else:
+                    printError('illegal addressing mode', info)
+            else:
+                self.computeZeroPageX(line, pc)
+
         elif line.isAbsoluteY():
-            self.computeAbsolutey(line, pc)
+            if not line_num in self.__short_opcodes_line_nums.keys():
+                if ABSOLUTEY in modes:
+                    self.computeAbsoluteY(line, pc)
+                elif ZEROPAGEY in modes:
+                    self.computeZeroPageY(line, pc)
+                else:
+                    printError('illegal addressing mode', info)
+            else:
+                self.computeZeroPageY(line, pc)
+
         elif line.isAbsolute():
-            self.computeAbsolute(line, pc)
+            if not line_num in self.__short_opcodes_line_nums.keys():
+                self.computeAbsolute(line, pc)
+            else:
+                self.computeZeroPage(line, pc)
+
         else:
             printError('illegal addressing mode', info)
 
@@ -1187,7 +1260,7 @@ class ASSEMBLER():
 
         asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
-    def computeAbsolutex(self, line, pc):
+    def computeAbsoluteX(self, line, pc):
         words = line.getWords()
         opcode, value, size = asmLinePrologue(line, ABSOLUTEX, words[2:-2])
         bytes = None
@@ -1203,7 +1276,7 @@ class ASSEMBLER():
 
         asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
-    def computeAbsolutey(self, line, pc):
+    def computeAbsoluteY(self, line, pc):
         words = line.getWords()
         opcode, value, size = asmLinePrologue(line, ABSOLUTEY, words[2:-2])
         bytes = None
@@ -1216,6 +1289,54 @@ class ASSEMBLER():
                 printError("bad word $%04x"%(value), line.getLine())
             else:
                 bytes = (value & 255, value / 256)
+
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
+
+    def computeZeroPage(self, line, pc):
+        words = line.getWords()
+        opcode, value, size = asmLinePrologue(line, ZEROPAGE, words[2:])
+        bytes = None
+        
+        if opcode != None:
+            # all prerequisites are good, let's solve
+            if value == None:
+                pass
+            elif not isByte(value):
+                printError("bad word $%04x"%(value), line.getLine())
+            else:
+                bytes = (value,)
+
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
+
+    def computeZeroPageX(self, line, pc):
+        words = line.getWords()
+        opcode, value, size = asmLinePrologue(line, ZEROPAGEX, words[2:-2])
+        bytes = None
+        
+        if opcode != None:
+            # all prerequisites are good, let's solve
+            if value == None:
+                pass
+            elif not isByte(value):
+                printError("bad word $%04x"%(value), line.getLine())
+            else:
+                bytes = (value,)
+
+        asmLineEpilogue(line, pc, opcode, value, bytes, size)
+
+    def computeZeroPageY(self, line, pc):
+        words = line.getWords()
+        opcode, value, size = asmLinePrologue(line, ZEROPAGEY, words[2:-2])
+        bytes = None
+        
+        if opcode != None:
+            # all prerequisites are good, let's solve
+            if value == None:
+                pass
+            elif not isByte(value):
+                printError("bad word $%04x"%(value), line.getLine())
+            else:
+                bytes = (value,)
 
         asmLineEpilogue(line, pc, opcode, value, bytes, size)
 
@@ -1255,7 +1376,8 @@ class ASSEMBLER():
         elif label == CMD_DWS:
             self.computeDws(line, pc)
         elif label == CMD_ORG:
-            self.computeOrg(line, pc)
+            pass
+            #~ self.computeOrg(line, pc)
         return
         
     def computeByte(self, line, pc):
@@ -1435,7 +1557,7 @@ class ASSEMBLER():
         line.setAddress(pc.get())
         pc.add(nb_words * SIZEOF_WORD)
 
-    def computeOrg(self, line, pc):
+    def xx__computeOrg(self, line, pc):
         words = line.getWords()
         addr = pc.get()
         info = line.getLine()
@@ -1450,6 +1572,42 @@ class ASSEMBLER():
                 if result != None:
                     self.__org = result
                     pc = PROGRAM_COUNTER(result)
+
+    def correctShortOpcodes(self):
+        for line_num, line in enumerate(self.getAsmLines()):
+            if line.isMnemonicLine():
+                if line.isSolved():
+                    word = line.getWords()[1]
+                    label = word.getLabel()
+                    opcode = word.get()
+                    mnemonic = OPCODE_VALUES[opcode]
+                    mode = MODES[opcode]
+                    size =  CODE_SIZES[opcode]
+                    modes = getModesByMnemonic(mnemonic)
+                    new_opcode = None
+                    bytes = line.getBytes()
+                    if size == 3:
+                        if not bytes[2]:
+                            # if third byte is null, address is a page zero one
+                            if mode == ABSOLUTE:
+                                if ZEROPAGE in modes:
+                                    new_opcode = getOpcodeValue(mnemonic, ZEROPAGE, line.getLine(), strict=True)
+                                    new_mode = ZEROPAGE
+                            elif mode == ABSOLUTEX:
+                                if ZEROPAGEX in modes:
+                                    new_opcode = getOpcodeValue(mnemonic, ZEROPAGEX, line.getLine(), strict=True)
+                                    new_mode = ZEROPAGEX
+                            elif mode == ABSOLUTEY:
+                                if ZEROPAGEY in modes:
+                                    new_opcode = getOpcodeValue(mnemonic, ZEROPAGEY, line.getLine(), strict=True)
+                                    new_mode = ZEROPAGEY
+                    if new_opcode != None:
+                        self.__short_opcodes_line_nums[line_num] = new_opcode
+                        #~ printWarning("%02X -> %02X (%s %s -> %s)"%(opcode, new_opcode, mnemonic, mode, new_mode), line.getLine())
+
+    def getShortOpcodes(self):
+        pass
+        
 
     def getCodeText(self):
         otext = EMPTY_STR
@@ -1472,6 +1630,14 @@ class ASSEMBLER():
             percent = (float(solved) / float(items)) * 100.0
             return "%6.2f%% assembled (%d/%d)"%(percent, solved, items)
 
+    def getLabels(self):
+        ret_dic = {}
+        keys = self.__labels.keys()
+        keys.sort()
+        for key in keys:
+            ret_dic[key] = self.__labels[key].get()
+        return ret_dic
+
     def getLabelsText(self):
         keys = self.__labels.keys()
         keys.sort()
@@ -1481,6 +1647,17 @@ class ASSEMBLER():
             value = self.__labels[key]
             otext += "%s 0x%x"%(key, value.get()) + CHAR_LF
         return otext
+
+    def getBytes(self):
+        bytes = []
+        for line in self.__asm_lines:
+            if line.isMnemonicLine() or line.isDirectiveLine():
+                if line.isSolved():
+                    for byte in line.getBytes():
+                        bytes.append(byte)
+                else:
+                    printWarning('not solved', line.getLine())
+        return bytes
 
     def getDesassembled(self):
         otext = EMPTY_STR

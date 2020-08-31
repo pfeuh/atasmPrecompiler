@@ -371,6 +371,8 @@ def readAtariFile(fname):
                     return first, bytes
                 else:
                     raise Exception("unexpected end of file %s!"%fname)
+            else:
+                raise Exception("unexpected end of file %s!"%fname)
 
 def getArgumentParserParams(asm, args):
     ap = asm.ARGUMENTS()
@@ -425,6 +427,37 @@ def getException(hook, *args, **kwds):
     except:
         return True
 
+def compareBinaries(refname, assembler):
+    # let's compare bytes with reference file's bytes assembled with atasm
+    ref_start, ref_bytes = readAtariFile(refname)
+    ref_buffer = BUFFER(ref_bytes)
+
+    # test continuity
+    pc = ref_start
+    for line in assembler.getAsmLines():
+        if line.getBytes() != None:
+            assert line.getAddress() == pc
+            pc += len(line.getBytes())
+
+    for line in assembler.getAsmLines():
+        if line.getBytes() != None:
+            for index, byte in enumerate(line.getBytes()):
+                ref_byte = ref_buffer.get()
+                if not "-silent" in sys.argv:
+                    if ref_byte == None:
+                        raise Exception("unexpected enf of reference file!")
+                    
+                    write("%04X "%(line.getAddress()+index))
+                    if byte != ref_byte:
+                        write("%02x <%02x> "%(ref_byte, byte))
+                    else:
+                        write("%02x  %02x "%(ref_byte, byte))
+                    if not index:
+                        write(line.getLine().getText())
+                    writeln("")
+                else:
+                    assert ref_byte == byte
+
 class BUFFER():
     def __init__(self,bytes):
         self.__bytes = bytes
@@ -436,7 +469,7 @@ class BUFFER():
             self.__ptr += 1
             return byte
         else:
-            return ""
+            return None
 
 if __name__ == "__main__":
 
@@ -612,38 +645,39 @@ if __name__ == "__main__":
         text = 'test5 .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
         assert commentLine(text) == 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
     
-    def test_assembly():
+
+   
+    def test_assemblyShort():
         import assembler6502 as asm
         
-        #~ fname = "utest/test_opcodes.asm"
-        fname = "utest/precompiled.asm"
-        #~ args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        fname = "utest/test_jmp_indirect_atasm.asm"
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16')
         params = getArgumentParserParams(asm, args)
 
         assembler = asm.ASSEMBLER(params)
         assembler.assemble()
-        #~ assembler.assemble()
-        #~ assembler.assemble()
-        #~ assembler.assemble()
-        #~ for word in assembler.getWords():
-            #~ print word, type(word)
+        assembler.assemble()
+        assembler.reset()
+        assembler.assemble()
+        assembler.assemble()
+
+        compareBinaries("utest/TEST_JMP_INDIRECT_ATASM.BIN", assembler)
         
-        write(assembler.getDesassembled())
+    def test_assembly():
+        import assembler6502 as asm
         
-        write(assembler.getLabelsText())
+        fname = "utest/test_opcodes_asm_cmp_cc65.asm"
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16')
+        params = getArgumentParserParams(asm, args)
+
+        assembler = asm.ASSEMBLER(params)
+        assembler.assemble()
+        assembler.assemble()
+        assembler.reset()
+        assembler.assemble()
+        assembler.assemble()
         
-        
-        
-        
-        
-        # let's compare bytes of reference source assembled with atasm
-        # with bytes of source assembled with assembler under test
-        
-        #~ ref_start, ref_bytes = readAtariFile("utest/TEST_OPCODES_ATASM.BIN")
-        #~ assert ref_start == 0x600
-        #~ assert len(ref_bytes) == 318
-        #~ buffer = BUFFER(ref_bytes)
+        compareBinaries("utest/TEST_OPCODES_CC65_FLAT.BIN", assembler)
 
     def test_tables ():
         import tables6502
@@ -669,6 +703,24 @@ if __name__ == "__main__":
             
             if (ref_opcode != ut_opcode) or (ref_mode != ut_mode):
                 raise Exception("Difference: %0X %s %-12s %s %-12s"%(x, ref_opcode, ref_mode, ut_opcode, ut_mode))
+
+        import assembler6502 as asm
+
+        fname = "utest/testfile.asm"
+        makeFile(fname, [' STY $03,X', ' STX $0E,Y', ' jmp($1234)', ' nop'])
+        args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
+        params = getArgumentParserParams(asm, args)
+        info = asm.SOURCE_LINE("None", "utest", 0)
+ 
+        assembler = asm.ASSEMBLER(params) 
+        assert len(assembler.getAsmLines()) == 4
+        
+        assembler.assemble()
+        assembler.assemble()
+        assembler.reset()
+        assembler.assemble()
+        assembler.assemble()
+        assert assembler.getBytes() == [148, 3, 150, 14, 0x6c , 0x34, 0x12, 234]
 
     def test_getOpcodeValue():
         # with a mnemonic and an addressing mode, getOpcodeValue return the matching opcode
@@ -984,7 +1036,6 @@ if __name__ == "__main__":
         assert len(assembler.getAsmLines()) == 7
 
         assembler.assemble()
-        #~ print assembler.getAsmLine(0).getBytes()
         assert assembler.getAsmLine(0).getBytes() == (0xe1, 0x45)
         assert assembler.getAsmLine(1).getBytes() == (0xa1, 0x21)
         assert assembler.getAsmLine(2).getBytes() == (0xc1, 0x44)
@@ -1026,7 +1077,6 @@ if __name__ == "__main__":
         assert len(assembler.getAsmLines()) == 7
 
         assembler.assemble()
-        #~ print assembler.getAsmLine(0).getBytes()
         assert assembler.getAsmLine(0).getBytes() == (0xad, 0x34, 0x12)
         assert assembler.getAsmLine(1).getBytes() == (0x8d, 0x67, 0x45)
         assert assembler.getAsmLine(2).getBytes() == (0x4c, 0xab, 0x90)
@@ -1034,7 +1084,7 @@ if __name__ == "__main__":
         for index in range(6):
             assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
 
-    def test_computeAbsolutex():
+    def test_computeAbsoluteX():
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
@@ -1054,7 +1104,7 @@ if __name__ == "__main__":
         for index in range(6):
             assert assembler.getAsmLine(index).getAddress() == 0x600 + index * 3
 
-    def test_computeAbsolutey():
+    def test_computeAbsoluteY():
         import assembler6502 as asm
         
         fname = "utest/testfile.asm"
@@ -1483,8 +1533,8 @@ if __name__ == "__main__":
         test_computeIndirectx()
         test_computeIndirect()
         test_computeAbsolute()
-        test_computeAbsolutex()
-        test_computeAbsolutey()
+        test_computeAbsoluteX()
+        test_computeAbsoluteY()
         test_computeByte()
         test_computeWord()
         test_computeDbyte()
@@ -1500,11 +1550,10 @@ if __name__ == "__main__":
         test_truncator()
         text_extractLabelsFromLine()
         test_assembly()
+        test_assemblyShort()
 
-    startSilentMode()
-    stopSilentMode()
-    #~ startDebugMode()
     #~ stopDebugMode()
+    #~ stopSilentMode()
     #~ test_assembly()
     utests()
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")
