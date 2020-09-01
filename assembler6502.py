@@ -72,6 +72,22 @@ if 1:
     KEYWORDS = DIRECTIVES + PONCTUATION + REGISTERS
 
     VAR_NUM = 0
+    
+    ARG_VERBOSE = '-verbose'
+    ARG_DEBUG = '-debug'
+    ARG_WALL = '-Wall'
+    ARG_WINC = '-Winc'
+    ARG_WSTR = '-Wstr'
+    ARG_WLBM = '-Wlbl'
+    ARG_IFNAME = '-ifname'
+    ARG_OFNAME = '-ofname'
+    ARG_DFNAME = '-dfname'
+    ARG_LFNAME = '-lfname'
+    ARG_NB_COLS = '-nb_cols'
+    ARG_NB_CART = '-cartridge'
+    ARG_NB_RAM = '-ram'
+    ARG_NB_ROM = '-rom'
+    ARG_NB_ORG = '-org'
 
 def write(text, fp=sys.stdout):
     if fp != None:
@@ -1990,7 +2006,32 @@ class ARGUMENTS():
     def get(self, aname):
         arg = self.getArgument(aname, strict=True)
         return arg.get()
-
+def getArguments(arguments, pairs=[], offset=1):
+    index = 0
+    kwds = {}
+    nb_args = len(arguments)
+    while index < nb_args:
+        arg = arguments[index]
+        if arg in pairs:
+            if index < (nb_args - 1):
+                param = arguments[index + 1]
+                if param.startswith('"'):
+                    value = eval(Param)
+                else:
+                    try:
+                        value = eval(param)
+                    except:
+                        value = param
+                    kwds[arg] = param
+                    index += 1
+            else:
+                printError("unexpected end of command line arguments")
+                sys.exit(1)
+        else:
+            kwds[arg] = True
+        index += 1
+    return kwds
+    
 if __name__ == "__main__":
     
     #####################################
@@ -2020,11 +2061,12 @@ if __name__ == "__main__":
     ap.parse(sys.argv)
 
     if ap.get('-org') == False:
-        ap.set('-org', 0x200)
+        ap.set('-org', None)
     if ap.get('-nb_cols') == False:
         ap.set('-nb_cols', 16)
     if ap.get('-ifname') == False:
         printError("'-ifname' is mandatory")
+        sys.exit(1)
 
     ##################
     #                #
