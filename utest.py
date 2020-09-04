@@ -507,6 +507,7 @@ if __name__ == "__main__":
 
         value='"µ\\x003345"'
         word = WORD('toto', TYPE_VARIABLE, value = value)
+        writeln(solveString(word, info))
         assert solveString(word, info) == (194, 181, 0, 51, 51, 52, 53)
 
         value='123'
@@ -559,6 +560,22 @@ if __name__ == "__main__":
         assembler.assemble()
         
         compareBinaries("utest/TEST_OPCODES_CC65_FLAT.BIN", assembler)
+        
+        fname = "utest/precompiled.asm"
+        args = ('toto.py', '-ifname', fname, '-org', '0x600')
+        params = getArguments(args, ('-ifname', '-nb_cols', '-org'))
+        assembler = ASSEMBLER(params)
+        assembler.assemble()
+        assembler.assemble()
+        assert assembler.getPercent() == 100.0
+
+        fname = "utest/precompiled_with_org.asm"
+        args = ('toto.py', '-ifname', fname)
+        params = getArguments(args, ('-ifname', '-nb_cols', '-org'))
+        assembler = ASSEMBLER(params)
+        assembler.assemble()
+        assembler.assemble()
+        assert assembler.getPercent() == 100.0
 
     def test_tables ():
         import tables6502

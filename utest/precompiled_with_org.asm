@@ -17,6 +17,8 @@
     zp  = 6
 ;   End of inclusion of file monitor_equates.asm
 
+    * = $f000
+
 source_start
 
 hooks

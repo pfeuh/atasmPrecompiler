@@ -1578,33 +1578,11 @@ class ASSEMBLER():
         words = line.getWords()
         info = line.getLine()
         
-        #~ if pc.get() != None:
-            #~ printError("programm counter already set", info)
-        #~ else:
-            #~ if len(words) < 4:
-                #~ printError("syntax error", info)
-            #~ else:
         result = solveExpression(words[3:], info)
         if result != None:
             self.__org = result
             words[1].set(result)
             pc.set(result)
-
-    def xx__computeOrg(self, line, pc):
-        words = line.getWords()
-        addr = pc.get()
-        info = line.getLine()
-        
-        if addr:
-            printError("programm counter already set", info)
-        else:
-            if len(words) < 4:
-                printError("syntax error", info)
-            else:
-                result = solveExpression(words[3:], info)
-                if result != None:
-                    self.__org = result
-                    pc = PROGRAM_COUNTER(result)
 
     def correctShortOpcodes(self):
         for line_num, line in enumerate(self.getAsmLines()):
@@ -1772,7 +1750,7 @@ class ASSEMBLER():
                     
         return otext
 
-    def getStatus(self):
+    def getPercent(self):
         tot = 0.0
         done = 0.0
         
@@ -1861,17 +1839,19 @@ if __name__ == "__main__":
     assembler = ASSEMBLER(arguments)
     
     old_percent = 0.0
-    for x in range(10):
+    pass_num = 0
+    while 1:
         assembler.assemble()
-        percent = assembler.getStatus()
-        write("pass %d - done:%.02f%%\n"%(x+1, percent))
+        percent = assembler.getPercent()
+        write("pass %d - done:%.02f%%\n"%(pass_num+1, percent))
         if percent == 100.0:
             break
         elif percent == old_percent:
             writeln(assembler.getUnsolvedText())
-            break
+            sys.exit(1)
         else:
             old_percent = percent
+        pass_num += 1
 
     #~ write(assembler.getDesassembled())
 
