@@ -1,6 +1,6 @@
-    .ORG 1536
-    .export _main
-_main:
+    ; .ORG 1536
+    .export start
+start:
 LABEL_01: BRK
     ORA ($A7,X) 
     ORA $6C

@@ -755,11 +755,8 @@ class ASM_LINE():
             word = words[1]
             if word.getType() in (TYPE_OPCODE, TYPE_DIRECTIVE):
                 return self.getBytes() != None
-            elif word.getLabel() == CMD_ORG:
-                return word.get() != None
         elif len(words) == 1:
             return words[0].getType() == TYPE_CONSTANT
-        
 
     def xx__isSolved(self):
         for word in self.__words:
@@ -1054,11 +1051,6 @@ class ASSEMBLER():
         line.setAddress, pc.get()
         info = line.getLine()
         
-        words = line.getWords()
-        if len(words) >= 2:
-            if words[1].getLabel() == "*":
-                pass
-        
         if line.hasLabel():
             self.computeLabel(line, pc)
         
@@ -1072,10 +1064,8 @@ class ASSEMBLER():
             self.computeAffectation(line, pc)
 
         else:
-            #~ if not line.hasLabel():
-            if len(line.getWords()) > 1:
-                if not line.getWords()[1].isSolved():
-                    printError("syntax error", info)
+            if not line.hasLabel():
+                printError("syntax error", info)
         
     def computeLabel(self, line, pc):
         words = line.getWords()
@@ -1083,6 +1073,28 @@ class ASSEMBLER():
         word.set(pc.get())
         line.setAddress(pc.get())
         return
+        old_value = word.get()
+        new_value = line.getAddress()
+        if old_value != None:
+            if new_value != None:
+                word.set(new_value)
+            else:
+                printError("program counter mismatch! already set at $%04X attempt to write $%04X"%(old_value, new_value), line.getLine())
+        else:
+            return
+            
+    #~ def computeLabel(self, line, pc):
+        #~ words = line.getWords()
+        #~ word = words[0]
+        #~ old_value = word.get()
+        #~ new_value = line.getAddress()
+        #~ if old_value != None:
+            #~ if new_value != None:
+                #~ word.set(new_value)
+            #~ else:
+                #~ printError("program counter mismatch! already set at $%04X attempt to write $%04X"%(old_value, new_value), line.getLine())
+        #~ else:
+            #~ return
             
     def computeOpcode(self, line_num, line, pc):
         words = line.getWords()
@@ -1478,12 +1490,11 @@ class ASSEMBLER():
         if bytes != None and pc.isOK():
             # all prerequisites are good, let's solve
             bytes = list(bytes)
-            if len(bytes):
-                for byte in bytes[:-1]:
-                    if not byte:
-                        printWarning('unexpected zero byte in string', info)
             bytes.append(0)
             bytes = tuple(bytes)
+            if len(bytes):
+                for byte in bytes[:-1]:
+                    printWarning('unexpected zero byte in string', info)
             words[2] = WORD(getNewConstantName(), TYPE_CONSTANT, bytes)
             line.setBytes(tuple(bytes))
             nb_items = len(bytes)
@@ -1616,6 +1627,7 @@ class ASSEMBLER():
 
     def getShortOpcodes(self):
         pass
+        
 
     def getCodeText(self):
         otext = EMPTY_STR
@@ -1672,8 +1684,12 @@ class ASSEMBLER():
         for line in self.__asm_lines:
             if line.hasLabel():
                 address = line.getAddress()
+                if address == None:
+                    address = "----"
+                else:
+                    address = "%04x"%address
                 label = line.getWords()[0].getLabel()
-                otext += "%04X: %s\n"%(address, label)
+                otext += "%s %s:\n"%(address, label)
                 
             if line.isMnemonicLine():
                 if line.isSolved():
@@ -1744,33 +1760,44 @@ class ASSEMBLER():
                     info = line.getLine()
                     otext += "NOT SOLVED:%s #%d %s\n"%(info.getFname(), info.getNum(), info.getText())
                     
+                #~ write(otext)
+                #~ otext = EMPTY_STR
+        #~ return EMPTY_STR
         return otext
 
-    def getStatus(self):
-        tot = 0.0
-        done = 0.0
-        
-        for line in self.getAsmLines():
-            if line.isMnemonicLine() or line.isDirectiveLine():
-                tot += 1.0
-                if line.getBytes() != None:
-                    done += 1.0
-            elif line.isAffectationLine():
-                tot += 1.0
-                if line.isSolved():
-                    done += 1.0
-        return (done / tot) * 100.0
-        
-    def getUnsolvedText(self):
-        otext = "Can't solve this values:\n"
-        for index, key in enumerate(self.getWords()):
-            word = self.getWord(key)
-            if word.get() == None:
-                otext += "%s "%key
-                if index %16 == 15:
-                    otext += "\n"
-        if index %16 != 15:
-            otext += "\n"
+    def getLineReport(self, line_num):
+        lines = self.getAsmLines()
+        if line_num < len(lines):
+            line = lines[line_num]
+            words = []
+            bytes = " ".join(["%02X"%byte for byte in line.getBytes()])
+            for word in line.getWords():
+                if not word.isSolved():
+                    words.append(word.getLabel())
+                else:
+                    value = word.get()
+                    if value == None:
+                        words.append('None')
+                    elif type(value) == int:
+                        words.append("%04X"%value)
+                    elif type(value) == tuple:
+                        words.append(" ".join(("%02X"%byte for byte in value)))
+                    elif value == "---":
+                        words.append("    ")
+                    else:
+                        raise Exception("unknown type %s"%value)
+            pc = line.getAddress()
+            if pc == None:
+                pc = "----"
+            else:
+                pc = "%04X"%pc
+                
+            return "#%05d %-30s #%05d %-30s %-30s %s %s\n"%(line_num+1, line.getText(), line.getLine().getNum(), line.getLine().getText(), " ".join(words), pc, bytes)
+
+    def getReport(self):
+        otext = EMPTY_STR
+        for line_num in range(len(self.__asm_lines)):
+            otext += self.getLineReport(line_num)
         return otext
 
     def __str__(self):
@@ -1823,25 +1850,11 @@ if __name__ == "__main__":
     ##################
 
     # let's parse source file and clean it
-    assembler = ASSEMBLER(arguments)
-    
-    old_percent = 0.0
-    for x in range(10):
-        assembler.assemble()
-        percent = assembler.getStatus()
-        write("pass %d - done:%.02f%%\n"%(x+1, percent))
-        if percent == 100.0:
-            break
-        elif percent == old_percent:
-            writeln(assembler.getUnsolvedText())
-            break
-        else:
-            old_percent = percent
+    source = ASSEMBLER(arguments)
+    source.assemble()
+    write(source.getDesassembled())
+    #~ diskSave(buildName(ap.get('-ifname'), "debug.asm"), source.debugStr())
 
-    write(assembler.getDesassembled())
-
-    #~ diskSave(buildName(ap.get('-ifname'), "debug.asm"), assembler.debugStr())
-
-    #~ diskSave(buildName(ap.get('-ifname'), "asm_lines.asm"), assembler.getCodeText())
-    #~ diskSave(buildName(ap.get('-ifname'), "asm_words.asm"), str(assembler))
-    #~ diskSave(buildName(ap.get('-ifname'), "labels.asm"), assembler.getLabelsText())
+    #~ diskSave(buildName(ap.get('-ifname'), "asm_lines.asm"), source.getCodeText())
+    #~ diskSave(buildName(ap.get('-ifname'), "asm_words.asm"), str(source))
+    #~ diskSave(buildName(ap.get('-ifname'), "labels.asm"), source.getLabelsText())

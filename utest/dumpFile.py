@@ -34,4 +34,5 @@ def dumpFile (fname, nb_cols=16, fp=sys.stdout):
 
 if __name__ == "__main__":
     
-    dumpFile("TEST_OPCODES_ATASM.BIN", fp=open("test.log", "w"))
+    dumpFile(sys.argv[0])
+    dumpFile("TEST_OPCODES_CC65_1536.BIN", fp=open("test.log", "w"))
