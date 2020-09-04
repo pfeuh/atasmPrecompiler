@@ -454,6 +454,9 @@ class PROGRAM_COUNTER():
     def get(self):
         return self.__PC
         
+    def set(self, value):
+        self.__PC = value
+        
     def add(self, size):
         self.__PC += size
         
@@ -707,7 +710,10 @@ class ASM_LINE():
     
     def isAffectationLine(self):
         if len(self.__words) >= 4:
-            return self.__words[2].getLabel() == CHAR_EQUAL
+            if self.__words[1].getLabel() != "*":            
+                return self.__words[2].getLabel() == CHAR_EQUAL
+            else:
+                return False
         else:
             return False
     
@@ -903,92 +909,94 @@ class ASSEMBLER():
         except:
             return None
         
-    def isStartAddressOK(self):
+    def checkStartAddress(self):
         too_late = False
         for line in self.getAsmLines():
-            if line.isAffectationLine():
+            if line.isDirectiveLine():
                 if line.getWords()[1].getLabel() == '*':
                     if too_late:
                         printError("start address set too late", line.getLine())
-                        return False
+                        sys.exit(1)
                     elif self.__org:
                         printError("start address already set", line.getLine())
-                        return False
+                        sys.exit(1)
                     else:
                         result = solveExpression(line.getWords()[3:], line.getLine())
                         if result != None:
                             self.__org = result
                             line.setAddress(result)
-                            return True
-                        else:
-                            return False
+                            return
+                else:
+                    too_late = True
             elif line.isMnemonicLine() or line.isDirectiveLine():
                 if line.getWords()[1].getLabel() != '*':
                     too_late == True
         if not self.__org:
             printError("start address is missing")
-            return False
-        else:
-            return True
+            sys.exit(1)
 
     def createAsmLines(self, fname):
         # let's slice the line in a list of words
         with open(fname, "r") as fp:
             lines = getFileLines(fp)
-        # building minimal source file (empty lines and comments are removed)
+
         for num, text in enumerate(lines):
+            # building original source lines with filename and line number
+            # information in order to display them in case of warning/error
             line = SOURCE_LINE(fname, text, num + 1)
             self.__source_lines.append(line)
             text = removeComment(text, line)
             if len(text):
+                # building minimal assembler lines (empty lines and comments are removed)
                 asm_line = ASM_LINE(text, line)
                 self.__asm_lines.append(asm_line)
             else:
                 # line is empty, no need to store it
                 continue
             self.splitLine(asm_line)
-        self.isStartAddressOK()
+            
+        # must have a start address to begin assembling
+        self.checkStartAddress()
 
     def splitLine(self, line):
+        # line is created, let's add its words
+        labels = [label for label in extractLabelsFromLine(line.getText(), line)]
+        info = line.getLine()
 
-            # line is created, let's add its words
-            labels = [label for label in extractLabelsFromLine(line.getText(), line)]
-            info = line.getLine()
+        for position, label in enumerate(labels):
+            if not position:
+                if label.endswith(":"):
+                    label = label[:-1]
 
-            for position, label in enumerate(labels):
-                if not position:
-                    if label.endswith(":"):
-                        label = label[:-1]
-
-                word = self.InitializeWord(label, position, info)
-                if label in self.__words.keys():
-                    # let's check a little list...
-                    global_word = self.__words[label]
-                    if word.getType() != global_word.getType():
-                        raise Exception("datatype mismatch!\nnew word:%s\nold_word:%s"%(str(word), str(global_word)))
-                    if global_word.isSolved():
-                        word = global_word
-                    else:
-                        if word.isSolved():
-                            self.__words[label] = word
-                        else:
-                            word = global_word
+            word = self.InitializeWord(label, position, info)
+            if label in self.__words.keys():
+                # let's check a little list...
+                global_word = self.__words[label]
+                if word.getType() != global_word.getType():
+                    raise Exception("datatype mismatch!\nnew word:%s\nold_word:%s"%(str(word), str(global_word)))
+                if global_word.isSolved():
+                    word = global_word
                 else:
-                    if word.getType() == TYPE_VARIABLE:
+                    if word.isSolved():
                         self.__words[label] = word
-                line.addWord(word)
-
-                if position == 0 and word.getType() == TYPE_VARIABLE:
-                    label = word.getLabel()
-                    if label in self.__labels.keys():
-                        printError("label '%s' already declared"%label, line.getLine())
                     else:
-                        self.__labels[label] = word
+                        word = global_word
+            else:
+                if word.getType() == TYPE_VARIABLE:
+                    self.__words[label] = word
+            line.addWord(word)
 
-            if len(line.getWords()) >= 3:
-                if line.getWords()[2].getLabel() == CHAR_COMMA:
-                    printError("unexpected comma", info)
-                
+            if position == 0 and word.getType() == TYPE_VARIABLE:
+                label = word.getLabel()
+                if label in self.__labels.keys():
+                    printError("label '%s' already declared"%label, line.getLine())
+                else:
+                    self.__labels[label] = word
+
+        if len(line.getWords()) >= 3:
+            if line.getWords()[2].getLabel() == CHAR_COMMA:
+                printError("unexpected comma", info)
+            
     def InitializeWord(self, label, word_num, info):
         word = WORD(label)
         test_value = False
@@ -1033,6 +1041,7 @@ class ASSEMBLER():
         return word
 
     def reset(self):
+        # when all is solved must restart with identified zero page opcodes 
         temp_dict = {}
         for key in self.__short_opcodes_line_nums.keys():
             temp_dict[key] = self.__short_opcodes_line_nums[key]
@@ -1384,8 +1393,7 @@ class ASSEMBLER():
         elif label == CMD_DWS:
             self.computeDws(line, pc)
         elif label == CMD_ORG:
-            pass
-            #~ self.computeOrg(line, pc)
+            self.computeOrg(line, pc)
         return
         
     def computeByte(self, line, pc):
@@ -1566,6 +1574,22 @@ class ASSEMBLER():
         line.setAddress(pc.get())
         pc.add(nb_words * SIZEOF_WORD)
 
+    def computeOrg(self, line, pc):
+        words = line.getWords()
+        info = line.getLine()
+        
+        #~ if pc.get() != None:
+            #~ printError("programm counter already set", info)
+        #~ else:
+            #~ if len(words) < 4:
+                #~ printError("syntax error", info)
+            #~ else:
+        result = solveExpression(words[3:], info)
+        if result != None:
+            self.__org = result
+            words[1].set(result)
+            pc.set(result)
+
     def xx__computeOrg(self, line, pc):
         words = line.getWords()
         addr = pc.get()
@@ -1742,7 +1766,9 @@ class ASSEMBLER():
                     
                 else:
                     info = line.getLine()
-                    otext += "NOT SOLVED:%s #%d %s\n"%(info.getFname(), info.getNum(), info.getText())
+                    word = line.getWords()[1]
+                    if word.getLabel() != "*" or word.get() == None:
+                        otext += "NOT SOLVED:%s #%d %s\n"%(info.getFname(), info.getNum(), info.getText())
                     
         return otext
 
@@ -1755,6 +1781,9 @@ class ASSEMBLER():
                 tot += 1.0
                 if line.getBytes() != None:
                     done += 1.0
+                elif line.getWords()[1].getLabel() == "*":
+                    if line.getWords()[1].get() != None:
+                        done += 1.0
             elif line.isAffectationLine():
                 tot += 1.0
                 if line.isSolved():
@@ -1762,16 +1791,22 @@ class ASSEMBLER():
         return (done / tot) * 100.0
         
     def getUnsolvedText(self):
-        otext = "Can't solve this values:\n"
+        otext = EMPTY_STR
+        found = 0
         for index, key in enumerate(self.getWords()):
             word = self.getWord(key)
             if word.get() == None:
+                found += 1
                 otext += "%s "%key
                 if index %16 == 15:
                     otext += "\n"
         if index %16 != 15:
             otext += "\n"
-        return otext
+        
+        if found:
+            return "Can't solve these %d values:\n"%found + otext
+        else:
+            return EMPTY_STR
 
     def __str__(self):
         otext = EMPTY_STR
@@ -1838,7 +1873,7 @@ if __name__ == "__main__":
         else:
             old_percent = percent
 
-    write(assembler.getDesassembled())
+    #~ write(assembler.getDesassembled())
 
     #~ diskSave(buildName(ap.get('-ifname'), "debug.asm"), assembler.debugStr())
 
