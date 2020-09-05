@@ -473,6 +473,125 @@ class BUFFER():
 
 if __name__ == "__main__":
 
+    def test_preassembler():
+        import assembler6502 as pco
+        write = pco.write
+        writeln = pco.writeln
+        LINE = pco.SOURCE_LINE
+        getLabel = pco.getLabel
+        removeComment = pco.removeComment
+        extractWord = pco.extractWord
+        commentLine = pco.commentLine
+        labelIsOk = pco.labelIsOk
+
+        assert labelIsOk("label")
+        assert labelIsOk("_label")
+        assert not labelIsOk("_")
+        assert labelIsOk("_1")
+        assert not labelIsOk("1234")
+        assert not labelIsOk("1")
+        assert labelIsOk("a1")
+        assert not labelIsOk("1a")
+        assert not labelIsOk("azerty;")
+        assert not labelIsOk(";azerty")
+        assert not labelIsOk("aze;rty")
+        assert not labelIsOk("az erty;")
+        assert labelIsOk("azerty")
+
+        assert removeComment("   ; azerty") == ""
+        assert removeComment("toto; azerty") == "toto"
+        assert removeComment(" toto ; azerty") == " toto"
+        assert removeComment(" toto     ; azerty") == " toto"
+        assert removeComment(" ; ;toto ; azerty") == ""
+        assert removeComment(" ; toto ; azerty") == ""
+        assert removeComment('toto .string "azerty";"azerty"') == 'toto .string "azerty"'
+        text = 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+        assert removeComment(text) == 'test5'
+        text = 'toto .string "aze;rty"   "qwerty" ;   "uiop"'
+        assert removeComment(text) == 'toto .string "aze;rty"   "qwerty"'
+        # testing string not closed
+        text = 'toto .string "aze;rty"   "qwerty ;   uiop'
+        try:
+            assert removeComment(text) == 'toto .string "aze;rty"   "qwerty"'
+        except:
+            pass
+        else:
+            raise Exception("there should have been an exception.")
+
+        line = LINE("noname", "", 123)    
+
+        line.setText("toto")    
+        assert getLabel(line) == "toto"
+        
+        line.setText(";toto")    
+        assert getLabel(line) == None
+        
+        line.setText(" toto")    
+        assert getLabel(line) == None;
+        
+        line.setText(" toto;")    
+        assert getLabel(line) == None
+        
+        line.setText("toto   ;")    
+        assert getLabel(line) == "toto"
+
+        line.setText("toto blablabla...  ;")    
+        assert getLabel(line) == "toto"
+
+        line.setText(";toto titi tata ; comment")    
+        assert getLabel(line) == None
+
+        line.setText("     ;toto titi tata ; comment")    
+        assert getLabel(line) == None
+
+
+        
+        text = "label op1 op2 op3" 
+        assert extractWord(text, 0) == "label"
+        assert extractWord(text, 1) == "op1"
+        assert extractWord(text, 2) == "op2"
+        assert extractWord(text, 3) == "op3"
+        
+        text = " label op1 op2 op3" 
+        assert extractWord(text, 1) == "label"
+        assert extractWord(text, 2) == "op1"
+        
+        text = ";label op1 op2 op3" 
+        assert extractWord(text, 1) == None
+        assert extractWord(text, 2) == None
+        
+        text = "  ;    label op1 op2 op3" 
+        assert extractWord(text, 1) == None
+        assert extractWord(text, 2) == None
+        
+        text = "   label;op1 op2 op3" 
+        assert extractWord(text, 0) == None
+        assert extractWord(text, 1) == "label"
+        assert extractWord(text, 2) == None
+        
+        text = "   label   ;   op1 op2 op3" 
+        assert extractWord(text, 0) == None
+        assert extractWord(text, 1) == "label"
+        assert extractWord(text, 2) == None
+        
+        text = "   label     op1  ;  op2 op3" 
+        assert extractWord(text, 0) == None
+        assert extractWord(text, 1) == "label"
+        assert extractWord(text, 2) == "op1"
+        assert extractWord(text, 3) == None
+        
+        text = ";toto titi tata ; comment"
+        assert commentLine(text) == ";toto titi tata ; comment"
+
+        text = "    ;toto titi tata ; comment"
+        assert commentLine(text) == ";    ;toto titi tata ; comment"
+
+        text = "     toto titi tata ; comment"
+        assert commentLine(text) == ";     toto titi tata ; comment"
+
+        text = 'test5 .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+        assert commentLine(text) == 'test5 ; .string "\\x00\\x01\\x02\\x03\\x04\\x05\\x06\\x07\\x08\\x09\\x0a\\x0b\\x0c\\x0d\\x0e\\x0f"'
+    
     def utest_getArguments():
         arguments = ('toto.py', ARG_IFNAME, '"toto.asm"', ARG_NB_COLS, '16', ARG_ORG, '0x600', ARG_DEBUG)
         args = getArguments(arguments, ('-ifname', '-nb_cols', '-org'))
@@ -507,7 +626,6 @@ if __name__ == "__main__":
 
         value='"µ\\x003345"'
         word = WORD('toto', TYPE_VARIABLE, value = value)
-        writeln(solveString(word, info))
         assert solveString(word, info) == (194, 181, 0, 51, 51, 52, 53)
 
         value='123'
@@ -846,7 +964,7 @@ if __name__ == "__main__":
         args = ('toto.py', '-ifname', fname, '-nb_cols', '16', '-org', '0x600')
         params = getArguments(args, ('-ifname', '-nb_cols', '-org'))
         info = SOURCE_LINE("None", "utest", 0)
- 
+
         assembler = ASSEMBLER(params) 
         assert len(assembler.getAsmLines()) == 4
 
@@ -1348,7 +1466,7 @@ if __name__ == "__main__":
                 assert word1.getLabel() == word2.getLabel()
                 assert word1.getType() == word2.getType()
 
-    def utests():
+    def utest_assembler():
         utest_getArguments()
         test_solveExpression()
         test_tables()
@@ -1386,9 +1504,7 @@ if __name__ == "__main__":
         test_assembly()
         test_assemblyShort()
 
-    #~ stopDebugMode()
-    #~ stopSilentMode()
     startSilentMode()
-    #~ test_assembly()
-    utests()
+    test_preassembler()
+    utest_assembler()
     sys.stdout.write("A L L   T E S T S   S U C C E S S F U L Y   P A S S E D !\n")

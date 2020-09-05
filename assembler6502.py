@@ -76,9 +76,9 @@ if 1:
     ARG_VERBOSE = '-verbose'
     ARG_DEBUG = '-debug'
     ARG_WALL = '-Wall'
-    ARG_WINC = '-Winc'
+    ARG_WEQU = '-Wequ'
+    ARG_WLBL = '-Wlbl'
     ARG_WSTR = '-Wstr'
-    ARG_WLBM = '-Wlbl'
     ARG_IFNAME = '-ifname'
     ARG_OFNAME = '-ofname'
     ARG_DFNAME = '-dfname'
@@ -122,6 +122,32 @@ def printError(message, line=None):
                 writeln(line.getText())
             else:
                 writeln('Error : %s'%(message))
+
+def getLabel(line, lower=True):
+    text = removeComment(line.getText())
+    if text != None:
+        if len(text):
+            if text[0] not in NO_LABEL_FIRST_CHAR:
+                word = text.split()[0]
+                if lower:
+                    word = word.lower()
+                if not labelIsOk(word):
+                    printError("label \"%s\" incorrect"%word, line)
+                return word
+    return None
+
+def extractWord(text, word_number, lower=True):
+    if text.startswith(CHAR_SPACE):
+        text = ".%s"%text
+        if not word_number:
+            return None
+    text = removeComment(text)
+    words = text.split()
+    if word_number < len(words):
+        word = words[word_number]
+        if lower:
+            word = word.lower()
+        return word
 
 def buildName(old_name, new_name):
     fname = os.path.splitext(os.path.basename(old_name))[0]
@@ -243,7 +269,7 @@ def extractLabelsFromLine(text, line=None):
         printError("string not closed!", line)
     return words
     
-def commentLine(text, line):
+def commentLine(text):
     otext = EMPTY_STR
     if text.startswith(COMMENT_TAG):
         # no labelo, no problemo!
@@ -446,6 +472,201 @@ def addSign(value):
         return (value ^ 255) + 1
     else:
         return value
+
+class PRECOMPILER_FILE():
+    def __init__(self, arguments):
+        if ARG_IFNAME in arguments.keys():
+            self.__fname = arguments[ARG_IFNAME]
+        else:
+            printError("input filename is mandatory")
+            sys.exit(1)
+        if type(self.__fname) != str or self.__fname == None:
+            printError("no source file is defined!", SOURCE_LINE("", CHAR_SPACE.join(sys.argv), 0))
+            sys.exit(1)
+        if not os.path.isfile(self.__fname):
+            printError("file \"%s\" not found"%inc_fname, SOURCE_LINE(self.__fname, CHAR_SPACE.join(sys.argv), 0))
+            sys.exit(1)
+        
+        if ARG_NB_COLS in arguments.keys():
+            self.__nb_cols = arguments[ARG_NB_COLS]
+        else:
+            self.__nb_cols = 16
+        
+        if ARG_WALL in arguments.keys():
+            self.__w_equ = True
+            self.__w_str = True
+            self.__w_lbl = True
+        else:
+            self.__w_equ = ARG_WEQU in arguments.keys()
+            self.__w_str = ARG_WSTR in arguments.keys()
+            self.__w_lbl = ARG_WLBL in arguments.keys()
+        
+        self.__lines = []
+        self.__fnames = []
+        self.__line_num = 1
+        self.__labels = {}
+        self.parseFile(self.__fname)
+    
+        # some labels are mandatory to build a ROM
+        for label in REQUIRED_LABELS:
+            if not label in self.__labels:
+                if self.__w_lbl:
+                    printWarning("label %s not found"%label)
+
+    def parseFile(self, fname):
+        self.__fnames.append(fname)
+        with open(fname, "r") as fp:
+            lines = getFileLines(fp)
+            for num, text in enumerate(lines):
+                self.parseLine(fname, text, num)
+                
+    def parseLine(self, fname, text, num):
+        word1 = extractWord(text, 1)
+        if word1 == KEYWORD_INCLUDE :
+            # keyword ".include" is detected, let's include the new file
+            self.addLabel(SOURCE_LINE(fname, text, num + 1))
+            line = SOURCE_LINE(fname, commentLine(text), num + 1)
+            inc_fname = extractWord(text, 2, lower=False)
+            if not self.isFileAlreadyIncluded(inc_fname):
+                if not os.path.isfile(inc_fname):
+                    printError("file \"%s\" not found"%inc_fname, SOURCE_LINE(fname, text, num + 1))
+                self.__lines.append(line)
+                # recursivity, seriously? :)
+                self.parseFile(inc_fname)
+                self.addPrecompilerLine("%s   End of inclusion of file %s"%(COMMENT_TAG, inc_fname))
+            else:
+                if self.__w_equ:
+                    printWarning('file "%s" already included'%inc_fname, SOURCE_LINE(fname, text, num + 1))
+
+        elif word1 in PRECOMP_KEYWORDS:
+            self.addLabel(SOURCE_LINE(fname, text, num + 1))
+            #a precompiler's keyword is detected, let's add some code
+            line = SOURCE_LINE(fname, commentLine(text), num + 1)                    
+            self.__lines.append(line)
+            
+            if word1 == KEYWORD_STRING:
+                self.addString(text, word1, SOURCE_LINE(fname, text, num + 1), eol=True)
+            elif word1 == KEYWORD_CH_ARRAY:
+                self.addString(text, word1, SOURCE_LINE(fname, text, num + 1), eol=False)
+            
+        else:
+            self.addLabel(SOURCE_LINE(fname, text, num + 1))
+            # nothing special, let's add this "regular" line
+            self.__lines.append(SOURCE_LINE(fname, text, num + 1))
+
+
+    def addString(self, text, key_word, line, eol=True):
+        position = text.lower().find(key_word)
+        start = position + len(key_word) + 1
+        # checking if keyword is not in the label's location
+        try:
+            while text[start] == CHAR_SPACE:
+                start += 1
+        except:
+            printError("missing data", line)
+        # extracting & evaluating the string
+        try:
+            btext = eval(text[start:])
+        except:
+            printError("data mismatch, perhaps a comment (not allowed on %s line)"%key_word, line)
+        
+        # setting difference between string and ch_array (no end of line)
+        if eol:
+            if chr(0) in btext:
+                if self.__w_str:
+                    printWarning("there is a \\x00 (enf of string) in this line:", line)
+            btext += CHAR_EOL
+        
+        self.buildMatrix( btext)
+
+    def buildMatrix(self, text):
+        position = 0
+        last = len(text) - 1
+
+        words = []
+        for position, car in enumerate(text):
+            byte = ord(text[position])
+            
+            if position % self.__nb_cols == 0:
+                string_txt = "    .byte "
+                
+            words.append("$%02x"%byte)
+            
+            if (position % self.__nb_cols) == (self.__nb_cols - 1):
+                string_txt += ", ".join(words)
+                self.addPrecompilerLine(string_txt)
+                words = []
+                
+        if len(words):
+            string_txt += ", ".join(words)
+            self.addPrecompilerLine(string_txt)
+
+    def getNextPrecompLineNum(self):
+        ret_val = self.__line_num
+        self.__line_num += 1
+        return ret_val
+
+    def addPrecompilerLine(self, text):
+        line = SOURCE_LINE("<precompiler>", text, self.getNextPrecompLineNum())
+        self.__lines.append(line)
+
+    def isFileAlreadyIncluded(self, fname):
+        return fname in self.__fnames
+
+    def isLabelFree(self, label):
+        return not label in self.__labels.keys()
+
+    def addLabel(self, line):
+        label = getLabel(line)
+        if label != None:
+            if not self.isLabelFree(label):
+                printLink("label previous declaration :", self.getLabelLine(label))
+                printError("label %s already defined!"%label, line)
+            else:
+                self.__labels[label] = line
+
+    def getLabelLine(self, label):
+        return self.__labels[label]
+
+    def getLabels(self):
+        labels = self.__labels.keys()
+        labels.sort()
+        return labels
+        
+    def saveLabels(self, fname):
+        keys = self.__labels.keys()
+        keys.sort()
+        with open(fname, "w") as fp:
+            for key in keys:
+                fp.write("%s\n"%key)
+
+    def saveLabelsOrigin(self, fname):
+        keys = self.__labels.keys()
+        keys.sort()
+        with open(fname, "w") as fp:
+            for key in keys:
+                line = self.__labels[key]
+                fp.write("%-16s %-16s %3d %s\n"%(key, line.getFname(), line.getNum(), line.getText()))
+
+    def getOutputSource(self):
+        text = EMPTY_STR
+        for line in self.__lines:
+            text += line.getText() + "\n"
+        return text
+                        
+    def saveOutputSource(self, fname):
+        open(fname, "w").write(self.getOutputSource())
+                        
+    def __str__(self):
+        text= EMPTY_STR
+        for line in self.__lines:
+            text += line.__str__()
+        return text
+        
+    def saveDebug(self, fname):
+        fp = open(fname, "w")
+        fp.write(self.__str__())
+        fp.close()
 
 class PROGRAM_COUNTER():
     def __init__(self, value=DEFAULT_PC_VALUE):
@@ -1827,8 +2048,20 @@ if __name__ == "__main__":
     #####################################
 
     arguments = getArguments(sys.argv, (ARG_IFNAME, ARG_OFNAME, ARG_DFNAME, ARG_LFNAME, ARG_ORG, ARG_NB_COLS))
-    if not ARG_NB_COLS in arguments.keys():arguments[ARG_NB_COLS] = 8
+    if not ARG_NB_COLS in arguments.keys():arguments[ARG_NB_COLS] = 16
     
+    #####################
+    #                   #
+    # PREASSEMBLER PART #
+    #                   #
+    #####################
+
+    precompiler = PRECOMPILER_FILE(arguments)
+    # change ifname for assembler
+    arguments[ARG_IFNAME] = buildName(arguments[ARG_IFNAME], "precompiled.asm")
+    precompiler.saveOutputSource(arguments[ARG_IFNAME])
+    writeln('precompilation done')
+
     ##################
     #                #
     # ASSEMBLER PART #

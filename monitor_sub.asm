@@ -25,7 +25,7 @@ print_out
     rts
 
 print_nibble
-    phx
+    pha
     and #$0f
     tax
     lda hextab, x
@@ -34,10 +34,10 @@ print_nibble
 
 print_byte
     pha
-    lsr
-    lsr
-    lsr
-    lsr
+    lsr a
+    lsr a
+    lsr a
+    lsr a
     jsr print_nibble
     pla
     jmp print_nibble
