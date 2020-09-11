@@ -473,6 +473,16 @@ def addSign(value):
     else:
         return value
 
+def buildRom(assembler):
+    pass
+
+def buildRam(assembler):
+    code =  assembler.getBytes()
+    org = assembler.getOrg()
+
+def buildCartridge(assembler):
+    pass
+
 class PRECOMPILER_FILE():
     def __init__(self, arguments):
         if ARG_IFNAME in arguments.keys():
@@ -484,7 +494,7 @@ class PRECOMPILER_FILE():
             printError("no source file is defined!", SOURCE_LINE("", CHAR_SPACE.join(sys.argv), 0))
             sys.exit(1)
         if not os.path.isfile(self.__fname):
-            printError("file \"%s\" not found"%inc_fname, SOURCE_LINE(self.__fname, CHAR_SPACE.join(sys.argv), 0))
+            printError("file \"%s\" not found"%self.__fname, SOURCE_LINE(self.__fname, CHAR_SPACE.join(sys.argv), 0))
             sys.exit(1)
         
         if ARG_NB_COLS in arguments.keys():
@@ -512,9 +522,15 @@ class PRECOMPILER_FILE():
             if not label in self.__labels:
                 if self.__w_lbl:
                     printWarning("label %s not found"%label)
+                    
+    def getLines(self):
+        return self.__lines
 
     def parseFile(self, fname):
         self.__fnames.append(fname)
+        if not os.path.isfile(fname):
+            printError("included file '%s' not found"%fname)
+            sys.exit(1)
         with open(fname, "r") as fp:
             lines = getFileLines(fp)
             for num, text in enumerate(lines):
@@ -988,13 +1004,6 @@ class ASM_LINE():
             return words[0].getType() == TYPE_CONSTANT
         
 
-    def xx__isSolved(self):
-        for word in self.__words:
-            if not word.isSolved():
-                return False
-        # all words are checked, finaly line is solved
-        return True
-            
     def setSolved(self):
         self.__solved = True
             
@@ -1028,7 +1037,7 @@ class ASM_LINE():
         return otext + CHAR_LF
 
 class ASSEMBLER():
-    def __init__(self, params):
+    def __init__(self, params, lines=None):
         # arguments stuff
         self.__params = params
         self.__fname = self.getArgument('-ifname')
@@ -1042,7 +1051,11 @@ class ASSEMBLER():
             sys.exit(1)
 
         # assembler stuff
-        self.__source_lines = []
+        if lines != None:
+            self.__source_lines = lines
+        else:
+            self.__source_lines = None
+                
         self.__asm_lines = []
         self.__words = {}
         self.__labels = {}
@@ -1051,6 +1064,9 @@ class ASSEMBLER():
         # let's go!
         self.createAsmLines(self.__fname)
     
+    def getOrg(self):
+        return self.__org
+
     def getArgument(self, pname):
         #getting an argument from commandline
         if pname in self.__params.keys():
@@ -1157,15 +1173,21 @@ class ASSEMBLER():
             sys.exit(1)
 
     def createAsmLines(self, fname):
-        # let's slice the line in a list of words
-        with open(fname, "r") as fp:
-            lines = getFileLines(fp)
+        if self.__source_lines == None:
+            self.__source_lines = []
+            # let's slice the line in a list of words
+            with open(fname, "r") as fp:
+                lines = getFileLines(fp)
+                for num, text in enumerate(lines):
+                    # building original source lines with filename and line number
+                    # information in order to display them in case of warning/error
+                    line = SOURCE_LINE(fname, text, num + 1)
+                    self.__source_lines.append(line)
+        else:
+            pass
 
-        for num, text in enumerate(lines):
-            # building original source lines with filename and line number
-            # information in order to display them in case of warning/error
-            line = SOURCE_LINE(fname, text, num + 1)
-            self.__source_lines.append(line)
+        for num, line in enumerate(self.__source_lines):
+            text = line.getText()
             text = removeComment(text, line)
             if len(text):
                 # building minimal assembler lines (empty lines and comments are removed)
@@ -1882,12 +1904,12 @@ class ASSEMBLER():
     def getBytes(self):
         bytes = []
         for line in self.__asm_lines:
-            if line.isMnemonicLine() or line.isDirectiveLine():
+            if line.isMnemonicLine() or line.isDirectiveLine() or line.isAffectationLine():
                 if line.isSolved():
                     for byte in line.getBytes():
                         bytes.append(byte)
-                else:
-                    printWarning('not solved', line.getLine())
+                #~ else:
+                    #~ printWarning('not solved', line.getLine())
         return bytes
 
     def getDesassembled(self):
@@ -1971,7 +1993,7 @@ class ASSEMBLER():
                     
         return otext
 
-    def getPercent(self):
+    def getPercent(self, trace=False):
         tot = 0.0
         done = 0.0
         
@@ -1980,13 +2002,23 @@ class ASSEMBLER():
                 tot += 1.0
                 if line.getBytes() != None:
                     done += 1.0
+                    
                 elif line.getWords()[1].getLabel() == "*":
                     if line.getWords()[1].get() != None:
                         done += 1.0
+                else:
+                    if trace:
+                        printLink("",line.getLine())
             elif line.isAffectationLine():
                 tot += 1.0
                 if line.isSolved():
                     done += 1.0
+                else:
+                    if trace:
+                        printLink("",line.getLine())
+            else:
+                if trace:
+                    printLink("",line.getLine())
         return (done / tot) * 100.0
         
     def getUnsolvedText(self):
@@ -2003,9 +2035,28 @@ class ASSEMBLER():
             otext += "\n"
         
         if found:
-            return "Can't solve these %d values:\n"%found + otext
-        else:
-            return EMPTY_STR
+            otext = "Can't solve these %d values:\n"%found + otext
+
+        otext2 = EMPTY_STR
+        found2 = 0
+        for line in self.__asm_lines:
+            for word in line.getWords():
+                if word.getType() == TYPE_CONSTANT:
+                    if word.get() == None:
+                        found2 += 1
+                        otext2 += "%s "%word.getLabel()
+                        if index %16 == 15:
+                            otext2 += "\n"
+                        
+        if found2:
+            otext = "Can't solve these %d constants:\n"%found + otext2
+            
+        text = EMPTY_STR
+        if found:
+            text += otext
+        if found2:
+            text += otext2
+        return text
 
     def __str__(self):
         otext = EMPTY_STR
@@ -2069,7 +2120,7 @@ if __name__ == "__main__":
     ##################
 
     # let's parse source file and clean it
-    assembler = ASSEMBLER(arguments)
+    assembler = ASSEMBLER(arguments, precompiler.getLines())
     
     old_percent = 0.0
     pass_num = 0
@@ -2080,12 +2131,30 @@ if __name__ == "__main__":
         if percent == 100.0:
             break
         elif percent == old_percent:
-            writeln(assembler.getUnsolvedText())
+            writeln("can't solve anymore")  
+            #~ (writeln(assembler.getUnsolvedText())
+            assembler.getPercent(trace=True)
             sys.exit(1)
         else:
             old_percent = percent
         pass_num += 1
 
+    #######################
+    #                     #
+    # POST ASSEMBLER PART #
+    #                     #
+    #######################
+
+    if ARG_NB_ROM in arguments.keys():
+        buildRom(assembler)
+    elif ARG_NB_CART in arguments.keys():
+        buildCartridge(assembler)
+    elif ARG_NB_RAM in arguments.keys():
+        buildRam(assembler)
+    else:
+        printError("Memory model missing")
+    #~ writeln(code)
+    #~ writeln(org)
     #~ write(assembler.getDesassembled())
 
     #~ diskSave(buildName(ap.get('-ifname'), "debug.asm"), assembler.debugStr())

@@ -375,15 +375,6 @@ def readAtariFile(fname):
             else:
                 raise Exception("unexpected end of file %s!"%fname)
 
-def xx__getArgumentParserParams(args):
-    ap = ARGUMENTS()
-    ap.addArgument(ARGUMENT('-ifname', str, check_minus=True))  # input file to assemble
-    ap.addArgument(ARGUMENT('-debug'))   # useful for programer only
-    ap.addArgument(ARGUMENT('-nb_cols', int))  # number of columns of the bytes generator
-    ap.addArgument(ARGUMENT('-org', int, check_minus=True))  # start address of code segment
-    ap.parse(args)
-    return ap.getArgsDictionary()
-
 def saveBytes(fname, bytes):
     with open(fname, "wb") as fp:
         for byte in bytes:
